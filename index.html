@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Stall Layout</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  :root{
+    --ink:#15140f;
+    --panel:#1f1d16;
+    --line:#36332a;
+    --paper:#f4efe3;
+    --muted:#8d8779;
+    --amber:#e8a33d;     /* market awning */
+    --amber-dim:#b97f2c;
+    --left:#e8a33d;      /* left side stalls */
+    --right:#5aa0c4;     /* right side stalls */
+    --danger:#d8634b;
+    --ok:#7fae57;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--ink);color:var(--paper)}
+  #map{position:absolute;inset:0;background:#0c0b08}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+  /* top status pill */
+  #status{
+    position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);
+    z-index:600;max-width:92%;padding:9px 14px;border-radius:999px;
+    background:rgba(31,29,22,.94);border:1px solid var(--line);
+    font-size:13px;line-height:1.25;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);
+    backdrop-filter:blur(6px)
+  }
+  #status b{color:var(--amber)}
+
+  /* layer switch */
+  .layerbtn{
+    position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;z-index:600;
+    background:rgba(31,29,22,.94);border:1px solid var(--line);color:var(--paper);
+    border-radius:10px;padding:8px 11px;font-size:12px;font-weight:600
+  }
+
+  /* bottom sheet */
+  #sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:600;
+    background:var(--panel);border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;padding:10px 14px calc(env(safe-area-inset-bottom) + 12px);
+    box-shadow:0 -10px 30px rgba(0,0,0,.45)
+  }
+  .grip{width:38px;height:4px;border-radius:99px;background:#48453a;margin:2px auto 10px}
+  .row{display:flex;gap:8px;align-items:center}
+  .row + .row{margin-top:8px}
+  .grow{flex:1}
+  .count{font-size:12px;color:var(--muted)}
+  .count b{color:var(--paper);font-size:15px}
+
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:12px;font-weight:600}
+  .primary{background:var(--amber);color:#241a08;padding:14px;font-size:15px;width:100%}
+  .primary:active{background:var(--amber-dim)}
+  .primary.armed{background:var(--danger);color:#fff}
+  .ghost{background:transparent;border:1px solid var(--line);color:var(--paper);padding:11px 12px;font-size:13px}
+  .ghost:active{background:#2a2820}
+
+  /* params dialog */
+  .scrim{position:absolute;inset:0;z-index:700;background:rgba(0,0,0,.5);display:none;align-items:flex-end}
+  .scrim.show{display:flex}
+  .dialog{width:100%;background:var(--panel);border-radius:18px 18px 0 0;border-top:1px solid var(--line);
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px)}
+  .dialog h2{margin:2px 0 2px;font-size:17px}
+  .dialog p.sub{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+  .field{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+  .field label{font-size:14px}
+  .field .hint{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{background:#2a2820;color:var(--paper);width:38px;height:38px;font-size:18px;border-radius:0}
+  .stepper button:active{background:#34312a}
+  .stepper .val{min-width:62px;text-align:center;font-size:14px}
+  .sides{display:flex;gap:6px}
+  .chip{flex:1;text-align:center;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted);background:transparent}
+  .chip.on{background:var(--amber);color:#241a08;border-color:var(--amber);font-weight:700}
+  .dialog .actions{display:flex;gap:8px;margin-top:14px}
+  .dialog .actions button{flex:1;padding:14px;font-size:15px}
+
+  /* stall popup */
+  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:14px}
+  .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+  .leaflet-popup-content{margin:12px 14px}
+  .pop h3{margin:0 0 2px;font-size:15px}
+  .pop .meta{font-size:11.5px;color:var(--muted);margin-bottom:9px}
+  .pop input{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);
+    border-radius:9px;padding:9px;font-size:14px;margin-bottom:9px}
+  .pop .prow{display:flex;gap:7px}
+  .pop .prow button{flex:1;padding:10px;font-size:13px;border-radius:9px}
+  .pop .del{background:var(--danger);color:#fff}
+  .pop .save{background:var(--ok);color:#10210a}
+
+  .toast{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 96px);left:50%;transform:translateX(-50%);
+    z-index:800;background:#000;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:.92}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="status">Tap <b>Add row</b> to begin</div>
+<button class="layerbtn" id="layerBtn">🛰 Satellite</button>
+
+<div id="sheet">
+  <div class="grip"></div>
+  <div class="row">
+    <div class="grow">
+      <div class="count"><b id="cStalls">0</b> stalls &nbsp;·&nbsp; <span id="cRows">0</span> rows</div>
+    </div>
+    <button class="ghost" id="exportBtn">Export</button>
+    <button class="ghost" id="clearBtn">Clear</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="primary" id="addBtn">＋ Add row of stalls</button>
+  </div>
+</div>
+
+<!-- params dialog -->
+<div class="scrim" id="scrim">
+  <div class="dialog">
+    <h2>Place stalls along this segment</h2>
+    <p class="sub" id="segInfo">—</p>
+
+    <div class="field">
+      <div><label>Stall length</label><span class="hint">along the street</span></div>
+      <div class="stepper" data-key="len">
+        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <div><label>Stall depth</label><span class="hint">across, into the kerb</span></div>
+      <div class="stepper" data-key="depth">
+        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <div><label>Gap between stalls</label></div>
+      <div class="stepper" data-key="gap">
+        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
+      </div>
+    </div>
+    <div class="field">
+      <div><label>Offset from centre line</label><span class="hint">half street width</span></div>
+      <div class="stepper" data-key="offset">
+        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
+      </div>
+    </div>
+    <div class="field" style="border-bottom:none">
+      <label>Sides</label>
+      <div class="sides">
+        <button class="chip on" data-side="left">Left</button>
+        <button class="chip on" data-side="right">Right</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="ghost" id="cancelDlg">Cancel</button>
+      <button class="primary" id="placeBtn" style="width:auto">Place stalls</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------- guard: make sure Leaflet loaded ---------- */
+if (typeof L === 'undefined') {
+  document.getElementById('status').innerHTML =
+    'Map library blocked here — open this file in your phone browser instead.';
+} else {
+/* ---------- map ---------- */
+const map = L.map('map', {zoomControl:false, tap:true}).setView([48.8566, 2.3522], 18);
+L.control.zoom({position:'bottomright'}).addTo(map);
+
+const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {maxZoom:22, maxNativeZoom:19, attribution:'© OpenStreetMap'});
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:22, maxNativeZoom:19, attribution:'© Esri'});
+osm.addTo(map);
+let satOn=false;
+document.getElementById('layerBtn').onclick=()=>{
+  satOn=!satOn;
+  if(satOn){map.removeLayer(osm);sat.addTo(map);layerBtn.textContent='🗺 Map';}
+  else{map.removeLayer(sat);osm.addTo(map);layerBtn.textContent='🛰 Satellite';}
+};
+
+// try to centre on user once
+map.locate({setView:true, maxZoom:19});
+
+/* ---------- local metric helpers (planar ENU, accurate at street scale) ---------- */
+function frame(ref){
+  const mLat=111320, mLng=111320*Math.cos(ref.lat*Math.PI/180);
+  return {
+    toXY:(p)=>({x:(p.lng-ref.lng)*mLng, y:(p.lat-ref.lat)*mLat}),
+    toLL:(xy)=>L.latLng(ref.lat+xy.y/mLat, ref.lng+xy.x/mLng)
+  };
+}
+
+/* ---------- state ---------- */
+let mode='idle';            // idle | pickA | pickB
+let A=null,B=null,tempLine=null,tempMarks=[];
+const rows=[];              // {places:[{poly,label,side,n}]}
+const params={len:3.0, depth:1.5, gap:0.0, offset:3.5};
+let sides={left:true,right:true};
+
+/* ---------- ui refs ---------- */
+const statusEl=document.getElementById('status');
+const addBtn=document.getElementById('addBtn');
+const scrim=document.getElementById('scrim');
+const segInfo=document.getElementById('segInfo');
+const toastEl=document.getElementById('toast');
+
+function setStatus(html){statusEl.innerHTML=html;}
+function toast(t){toastEl.textContent=t;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),1500);}
+function refreshCounts(){
+  let s=0;rows.forEach(r=>s+=r.places.length);
+  document.getElementById('cStalls').textContent=s;
+  document.getElementById('cRows').textContent=rows.length;
+}
+
+/* ---------- add-row flow ---------- */
+addBtn.onclick=()=>{
+  if(mode==='idle'){
+    mode='pickA';addBtn.textContent='Cancel';addBtn.classList.add('armed');
+    setStatus('Tap the <b>first intersection</b> (start of the street)');
+  } else {
+    cancelPick();
+  }
+};
+function cancelPick(){
+  mode='idle';A=null;B=null;
+  if(tempLine){map.removeLayer(tempLine);tempLine=null;}
+  tempMarks.forEach(m=>map.removeLayer(m));tempMarks=[];
+  addBtn.textContent='＋ Add row of stalls';addBtn.classList.remove('armed');
+  setStatus('Tap <b>Add row</b> to begin');
+}
+
+map.on('click',(e)=>{
+  if(mode==='pickA'){
+    A=e.latlng;
+    tempMarks.push(L.circleMarker(A,{radius:7,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map));
+    mode='pickB';
+    setStatus('Tap the <b>next intersection</b> (end of the street)');
+  } else if(mode==='pickB'){
+    B=e.latlng;
+    tempMarks.push(L.circleMarker(B,{radius:7,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map));
+    tempLine=L.polyline([A,B],{color:'#e8a33d',weight:2,dashArray:'5,6'}).addTo(map);
+    mode='idle';addBtn.textContent='＋ Add row of stalls';addBtn.classList.remove('armed');
+    openDialog();
+  }
+});
+
+/* ---------- params dialog ---------- */
+function fmt(v){return v.toFixed(1)+' m';}
+function syncDialog(){
+  document.querySelectorAll('.stepper').forEach(s=>{
+    s.querySelector('.val').textContent=fmt(params[s.dataset.key]);
+  });
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.classList.toggle('on', sides[c.dataset.side]);
+  });
+}
+document.querySelectorAll('.stepper button').forEach(b=>{
+  b.onclick=()=>{
+    const key=b.parentElement.dataset.key;
+    params[key]=Math.max(0, +(params[key]+parseFloat(b.dataset.d)).toFixed(1));
+    syncDialog();updateSegInfo();
+  };
+});
+document.querySelectorAll('.chip').forEach(c=>{
+  c.onclick=()=>{sides[c.dataset.side]=!sides[c.dataset.side];syncDialog();updateSegInfo();};
+});
+function segLen(){const f=frame(A);const b=f.toXY(B);return Math.hypot(b.x,b.y);}
+function perRow(){const step=params.len+params.gap;return step<=0?0:Math.floor(segLen()/step);}
+function updateSegInfo(){
+  const n=perRow();const sideCount=(sides.left?1:0)+(sides.right?1:0);
+  segInfo.innerHTML=`Segment <b>${segLen().toFixed(1)} m</b> → up to <b>${n*sideCount}</b> stalls (${n} per side)`;
+}
+function openDialog(){syncDialog();updateSegInfo();scrim.classList.add('show');}
+document.getElementById('cancelDlg').onclick=()=>{scrim.classList.remove('show');cancelPick();};
+document.getElementById('placeBtn').onclick=()=>{scrim.classList.remove('show');generateRow();cancelPick();};
+
+/* ---------- generate stalls ---------- */
+function generateRow(){
+  if(!A||!B)return;
+  const f=frame(A);
+  const a={x:0,y:0}, b=f.toXY(B);
+  const L_=Math.hypot(b.x,b.y); if(L_<0.5){toast('Segment too short');return;}
+  const dir={x:b.x/L_, y:b.y/L_};
+  const perp={x:-dir.y, y:dir.x};           // left of travel direction
+  const step=params.len+params.gap;
+  const n=Math.floor(L_/step);
+  const row={places:[]};
+  const sideList=[];
+  if(sides.left) sideList.push({s:1, key:'L', color:'#e8a33d'});
+  if(sides.right) sideList.push({s:-1, key:'R', color:'#5aa0c4'});
+
+  sideList.forEach(side=>{
+    for(let i=0;i<n;i++){
+      const a0=i*step, a1=a0+params.len;
+      const inn=params.offset, out=params.offset+params.depth;
+      const corner=(along,across)=>f.toLL({
+        x: dir.x*along + side.s*perp.x*across,
+        y: dir.y*along + side.s*perp.y*across
+      });
+      const poly=L.polygon([
+        corner(a0,inn), corner(a1,inn), corner(a1,out), corner(a0,out)
+      ],{color:'#000',weight:1,fillColor:side.color,fillOpacity:.55}).addTo(map);
+      const place={poly, label:'', side:side.key, n:i+1};
+      poly.on('click',()=>openStall(place));
+      row.places.push(place);
+    }
+  });
+  rows.push(row);refreshCounts();
+  toast(row.places.length+' stalls placed');
+}
+
+/* ---------- edit / remove a stall ---------- */
+function openStall(place){
+  const div=document.createElement('div');div.className='pop';
+  div.innerHTML=`
+    <h3>Stall ${place.side}${place.n}</h3>
+    <div class="meta">${params.len.toFixed(1)} × ${params.depth.toFixed(1)} m · ${place.side==='L'?'left':'right'} side</div>
+    <input type="text" placeholder="Assign vendor / label" value="${place.label.replace(/"/g,'&quot;')}" />
+    <div class="prow">
+      <button class="del">Delete</button>
+      <button class="save">Save</button>
+    </div>`;
+  const input=div.querySelector('input');
+  place.poly.bindPopup(div,{closeButton:false,minWidth:200}).openPopup();
+  div.querySelector('.save').onclick=()=>{
+    place.label=input.value.trim();
+    place.poly.setStyle({weight: place.label?3:1, color: place.label?'#fff':'#000'});
+    if(place.label) place.poly.bindTooltip(place.label,{permanent:true,direction:'center',className:'lbl'});
+    place.poly.closePopup();
+  };
+  div.querySelector('.del').onclick=()=>{
+    map.removeLayer(place.poly);
+    rows.forEach(r=>{const i=r.places.indexOf(place);if(i>-1)r.places.splice(i,1);});
+    refreshCounts();
+  };
+}
+
+/* ---------- clear / export ---------- */
+document.getElementById('clearBtn').onclick=()=>{
+  if(!rows.length)return;
+  if(!confirm('Remove all stalls?'))return;
+  rows.forEach(r=>r.places.forEach(p=>map.removeLayer(p.poly)));
+  rows.length=0;refreshCounts();
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const features=[];
+  rows.forEach(r=>r.places.forEach(p=>{
+    const ll=p.poly.getLatLngs()[0].map(c=>[c.lng,c.lat]);
+    ll.push(ll[0]);
+    features.push({type:'Feature',
+      properties:{id:p.side+p.n, label:p.label, side:p.side, length_m:params.len, depth_m:params.depth},
+      geometry:{type:'Polygon',coordinates:[ll]}});
+  }));
+  if(!features.length){toast('Nothing to export');return;}
+  const blob=new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='stalls.geojson';a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+} // end Leaflet guard
+</script>
+</body>
+</html>
