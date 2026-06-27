@@ -1,167 +1,362 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<title>Stall Layout</title>
+<title>Brocante · Plan des emplacements</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <style>
   :root{
     --ink:#15140f;
     --panel:#1f1d16;
+    --panel-2:#262319;
     --line:#36332a;
     --paper:#f4efe3;
-    --muted:#8d8779;
-    --amber:#e8a33d;     /* market awning */
+    --muted:#9a9384;
+    --amber:#e8a33d;
     --amber-dim:#b97f2c;
-    --left:#e8a33d;      /* left side stalls */
-    --right:#5aa0c4;     /* right side stalls */
+    --blue:#5aa0c4;
+    --green:#7fae57;
     --danger:#d8634b;
     --ok:#7fae57;
+    --pending:#e8a33d;
+    --confirmed:#5aa0c4;
+    --free:#74905a;
+    --blocked:#6b6860;
+    --r:14px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--ink);color:var(--paper)}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--ink);color:var(--paper);overscroll-behavior:none}
   #map{position:absolute;inset:0;background:#0c0b08}
   .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:12px;font-weight:600;color:var(--paper)}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .hidden{display:none !important}
 
-  /* top status pill */
+  /* ====== TOP BAR ====== */
+  #topbar{
+    position:absolute;top:0;left:0;right:0;z-index:650;
+    display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+    background:linear-gradient(180deg,rgba(21,20,15,.96),rgba(21,20,15,.55) 70%,transparent);
+    pointer-events:none;
+  }
+  #topbar > *{pointer-events:auto}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;letter-spacing:.2px}
+  .brand .dot{width:11px;height:11px;border-radius:3px;background:var(--amber);box-shadow:0 0 0 3px rgba(232,163,61,.18)}
+  .brand small{display:block;font-weight:500;font-size:10.5px;color:var(--muted);letter-spacing:.3px}
+  .spacer{flex:1}
+  .iconbtn{
+    background:rgba(31,29,22,.92);border:1px solid var(--line);
+    border-radius:11px;padding:8px 10px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px
+  }
+  .userchip{
+    display:flex;align-items:center;gap:8px;background:rgba(31,29,22,.92);border:1px solid var(--line);
+    border-radius:999px;padding:5px 6px 5px 10px;font-size:12px
+  }
+  .userchip .role{font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;padding:2px 7px;border-radius:999px;font-weight:800}
+  .role.admin{background:var(--danger);color:#fff}
+  .role.moderator{background:var(--blue);color:#08202c}
+  .role.user{background:var(--green);color:#0f210a}
+  .langtoggle{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:rgba(31,29,22,.92)}
+  .langtoggle button{background:transparent;padding:7px 9px;font-size:11px;font-weight:800;border-radius:0;color:var(--muted)}
+  .langtoggle button.on{background:var(--amber);color:#241a08}
+
+  /* ====== STATUS PILL ====== */
   #status{
-    position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:50%;transform:translateX(-50%);
-    z-index:600;max-width:92%;padding:9px 14px;border-radius:999px;
+    position:absolute;top:calc(env(safe-area-inset-top) + 56px);left:50%;transform:translateX(-50%);
+    z-index:600;max-width:92%;padding:8px 14px;border-radius:999px;
     background:rgba(31,29,22,.94);border:1px solid var(--line);
-    font-size:13px;line-height:1.25;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);
-    backdrop-filter:blur(6px)
+    font-size:12.5px;line-height:1.25;text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4);backdrop-filter:blur(6px)
   }
   #status b{color:var(--amber)}
 
-  /* layer switch */
-  .layerbtn{
-    position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;z-index:600;
-    background:rgba(31,29,22,.94);border:1px solid var(--line);color:var(--paper);
-    border-radius:10px;padding:8px 11px;font-size:12px;font-weight:600
+  /* ====== LEGEND ====== */
+  #legend{
+    position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:560;
+    background:rgba(31,29,22,.92);border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:11px;
+    box-shadow:0 6px 20px rgba(0,0,0,.4);backdrop-filter:blur(6px)
   }
+  #legend .lg{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--muted)}
+  #legend .sw{width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.5)}
 
-  /* bottom sheet */
+  /* ====== FLOATING RIGHT BUTTONS ====== */
+  #rightstack{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:560;display:flex;flex-direction:column;gap:8px}
+  #rightstack .iconbtn{justify-content:center;width:46px;height:46px;padding:0;font-size:18px}
+
+  /* ====== BOTTOM SHEET ====== */
   #sheet{
     position:absolute;left:0;right:0;bottom:0;z-index:600;
     background:var(--panel);border-top:1px solid var(--line);
-    border-radius:18px 18px 0 0;padding:10px 14px calc(env(safe-area-inset-bottom) + 12px);
+    border-radius:18px 18px 0 0;padding:8px 14px calc(env(safe-area-inset-bottom) + 12px);
     box-shadow:0 -10px 30px rgba(0,0,0,.45)
   }
   .grip{width:38px;height:4px;border-radius:99px;background:#48453a;margin:2px auto 10px}
   .row{display:flex;gap:8px;align-items:center}
   .row + .row{margin-top:8px}
   .grow{flex:1}
-  .count{font-size:12px;color:var(--muted)}
-  .count b{color:var(--paper);font-size:15px}
-
-  button{font-family:inherit;cursor:pointer;border:none;border-radius:12px;font-weight:600}
+  .stats{display:flex;gap:14px;align-items:baseline;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+  .stats b{color:var(--paper);font-size:17px;font-weight:800}
+  .stats .pendingn{color:var(--pending)}
   .primary{background:var(--amber);color:#241a08;padding:14px;font-size:15px;width:100%}
   .primary:active{background:var(--amber-dim)}
   .primary.armed{background:var(--danger);color:#fff}
   .ghost{background:transparent;border:1px solid var(--line);color:var(--paper);padding:11px 12px;font-size:13px}
   .ghost:active{background:#2a2820}
+  .ghost.wide{flex:1;text-align:center}
 
-  /* params dialog */
-  .scrim{position:absolute;inset:0;z-index:700;background:rgba(0,0,0,.5);display:none;align-items:flex-end}
+  /* ====== DIALOG (generic bottom modal) ====== */
+  .scrim{position:absolute;inset:0;z-index:700;background:rgba(0,0,0,.55);display:none;align-items:flex-end;backdrop-filter:blur(2px)}
   .scrim.show{display:flex}
   .dialog{width:100%;background:var(--panel);border-radius:18px 18px 0 0;border-top:1px solid var(--line);
-    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px)}
-  .dialog h2{margin:2px 0 2px;font-size:17px}
+    padding:16px 16px calc(env(safe-area-inset-bottom) + 16px);max-height:88vh;overflow:auto}
+  .dialog h2{margin:2px 0 2px;font-size:18px}
   .dialog p.sub{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
   .field{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
   .field label{font-size:14px}
   .field .hint{font-size:11px;color:var(--muted);display:block;margin-top:2px}
-  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-  .stepper button{background:#2a2820;color:var(--paper);width:38px;height:38px;font-size:18px;border-radius:0}
+  .stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stepper button{background:#2a2820;width:38px;height:38px;font-size:18px;border-radius:0}
   .stepper button:active{background:#34312a}
   .stepper .val{min-width:62px;text-align:center;font-size:14px}
   .sides{display:flex;gap:6px}
-  .chip{flex:1;text-align:center;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted);background:transparent}
-  .chip.on{background:var(--amber);color:#241a08;border-color:var(--amber);font-weight:700}
+  .chip{flex:1;text-align:center;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted);background:transparent;font-weight:600}
+  .chip.on{background:var(--amber);color:#241a08;border-color:var(--amber);font-weight:800}
   .dialog .actions{display:flex;gap:8px;margin-top:14px}
   .dialog .actions button{flex:1;padding:14px;font-size:15px}
 
-  /* stall popup */
-  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:14px}
-  .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
-  .leaflet-popup-content{margin:12px 14px}
-  .pop h3{margin:0 0 2px;font-size:15px}
-  .pop .meta{font-size:11.5px;color:var(--muted);margin-bottom:9px}
-  .pop input{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);
-    border-radius:9px;padding:9px;font-size:14px;margin-bottom:9px}
-  .pop .prow{display:flex;gap:7px}
-  .pop .prow button{flex:1;padding:10px;font-size:13px;border-radius:9px}
-  .pop .del{background:var(--danger);color:#fff}
-  .pop .save{background:var(--ok);color:#10210a}
+  /* form inputs */
+  .inp{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);
+    border-radius:10px;padding:12px;font-size:15px;margin-bottom:10px}
+  .inp::placeholder{color:#6f6a5d}
+  label.lbl{display:block;font-size:12px;color:var(--muted);margin:2px 0 5px;font-weight:600}
 
-  .toast{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 96px);left:50%;transform:translateX(-50%);
-    z-index:800;background:#000;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
-  .toast.show{opacity:.92}
+  /* ====== STALL SHEET ====== */
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;padding:5px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+  .badge .d{width:8px;height:8px;border-radius:99px}
+  .b-free{background:rgba(116,144,90,.18);color:#a9cf86}
+  .b-pending{background:rgba(232,163,61,.18);color:var(--amber)}
+  .b-confirmed{background:rgba(90,160,196,.2);color:#8fcdec}
+  .b-blocked{background:rgba(107,104,96,.25);color:#b9b3a5}
+  .meta{font-size:12px;color:var(--muted)}
+  .resbox{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin:10px 0;font-size:13px}
+  .resbox .k{color:var(--muted);font-size:11px}
+  .btnrow{display:flex;gap:8px;margin-top:6px}
+  .btnrow button{flex:1;padding:13px;font-size:14px}
+  .b-ok{background:var(--ok);color:#10210a}
+  .b-warn{background:var(--amber);color:#241a08}
+  .b-del{background:var(--danger);color:#fff}
+
+  /* ====== RESERVATIONS PANEL ====== */
+  .resitem{display:flex;gap:10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+  .resitem:last-child{border-bottom:none}
+  .resitem .info{flex:1;min-width:0}
+  .resitem .info .t{font-weight:700;font-size:14px}
+  .resitem .info .s{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .resitem .act{display:flex;gap:6px}
+  .resitem .act button{padding:9px 10px;font-size:12px}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:26px 10px}
+
+  /* ====== AUTH ====== */
+  #auth{position:absolute;inset:0;z-index:900;background:
+      radial-gradient(120% 80% at 50% -10%, #2a2417 0%, #15140f 55%);
+      display:flex;flex-direction:column;justify-content:center;padding:24px;overflow:auto}
+  #auth .card{max-width:420px;margin:auto;width:100%}
+  #auth .logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:6px}
+  #auth .logo .dot{width:16px;height:16px;border-radius:5px;background:var(--amber);box-shadow:0 0 0 5px rgba(232,163,61,.16)}
+  #auth h1{font-size:26px;text-align:center;margin:8px 0 2px;letter-spacing:.3px}
+  #auth .tag{text-align:center;color:var(--muted);font-size:13px;margin-bottom:22px}
+  .tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:16px}
+  .tabs button{flex:1;background:transparent;color:var(--muted);padding:11px;font-size:14px;border-radius:9px}
+  .tabs button.on{background:var(--amber);color:#241a08}
+  .pane{display:none}
+  .pane.on{display:block}
+  .demo{margin-top:14px;background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--muted)}
+  .demo b{color:var(--paper)}
+  .demo .credrow{display:flex;justify-content:space-between;margin-top:6px}
+  .demo code{background:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--amber);font-size:12px}
+  #auth .authlang{display:flex;justify-content:center;margin-top:18px}
+  .err{color:var(--danger);font-size:12.5px;min-height:16px;margin:-2px 0 8px}
+
+  /* ====== TOAST ====== */
+  .toast{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 100px);left:50%;transform:translateX(-50%);
+    z-index:800;background:#000;color:#fff;padding:10px 15px;border-radius:11px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:88%;text-align:center}
+  .toast.show{opacity:.94}
+
+  /* leaflet popup-free, we use sheets; keep tooltips styled */
+  .leaflet-tooltip.lbl{background:rgba(21,20,15,.9);border:1px solid var(--line);color:var(--paper);font-size:11px;font-weight:700;border-radius:6px;box-shadow:none}
+  .leaflet-tooltip.lbl::before{display:none}
+  .leaflet-control-attribution{font-size:9px;background:rgba(21,20,15,.6) !important;color:#7c766a !important}
+  .leaflet-control-attribution a{color:#9a9384 !important}
+
+  /* role visibility helpers */
+  body:not(.role-admin):not(.role-moderator) .staffonly{display:none !important}
+  body:not(.role-admin) .adminonly{display:none !important}
 </style>
 </head>
-<body>
+<body class="signed-out">
+
+<!-- ============ AUTH ============ -->
+<div id="auth">
+  <div class="card">
+    <div class="logo"><span class="dot"></span></div>
+    <h1 data-i18n="app_name">Brocante</h1>
+    <div class="tag" data-i18n="app_tag">Plan des emplacements & réservations</div>
+
+    <div class="tabs">
+      <button id="tabVisitor" class="on" data-i18n="tab_visitor">Visiteur</button>
+      <button id="tabStaff" data-i18n="tab_staff">Équipe</button>
+    </div>
+
+    <!-- visitor pane -->
+    <div class="pane on" id="paneVisitor">
+      <label class="lbl" data-i18n="your_name">Votre nom</label>
+      <input class="inp" id="visName" placeholder="Camille Dupont" autocomplete="name" />
+      <label class="lbl" data-i18n="contact_opt">Contact (téléphone ou e-mail) — optionnel</label>
+      <input class="inp" id="visContact" placeholder="06 12 34 56 78" autocomplete="tel" />
+      <div class="err" id="visErr"></div>
+      <button class="primary" id="enterVisitor" data-i18n="enter_visitor">Entrer en visiteur</button>
+    </div>
+
+    <!-- staff pane -->
+    <div class="pane" id="paneStaff">
+      <label class="lbl" data-i18n="username">Identifiant</label>
+      <input class="inp" id="stUser" placeholder="admin" autocomplete="username" />
+      <label class="lbl" data-i18n="password">Mot de passe</label>
+      <input class="inp" id="stPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <div class="err" id="stErr"></div>
+      <button class="primary" id="enterStaff" data-i18n="sign_in">Se connecter</button>
+      <div class="demo">
+        <b data-i18n="demo_accounts">Comptes de démonstration</b>
+        <div class="credrow"><span data-i18n="role_admin">Administrateur</span><code>admin / admin123</code></div>
+        <div class="credrow"><span data-i18n="role_moderator">Modérateur</span><code>mod / mod123</code></div>
+      </div>
+    </div>
+
+    <div class="authlang">
+      <div class="langtoggle">
+        <button data-lang="fr">FR</button>
+        <button data-lang="en">EN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
 <div id="map"></div>
 
-<div id="status">Tap <b>Add row</b> to begin</div>
-<button class="layerbtn" id="layerBtn">🛰 Satellite</button>
+<div id="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <div><span data-i18n="app_name">Brocante</span><small data-i18n="app_tag">Plan des emplacements</small></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="langtoggle" id="appLang">
+    <button data-lang="fr">FR</button>
+    <button data-lang="en">EN</button>
+  </div>
+  <div class="userchip">
+    <span id="uName">—</span>
+    <span class="role user" id="uRole">user</span>
+    <button class="iconbtn" id="logoutBtn" title="Logout" style="padding:5px 8px">⎋</button>
+  </div>
+</div>
 
+<div id="status"></div>
+
+<div id="legend">
+  <div class="lg"><span class="sw" style="background:var(--free)"></span><span data-i18n="lg_free">Libre</span></div>
+  <div class="lg"><span class="sw" style="background:var(--pending)"></span><span data-i18n="lg_pending">En attente</span></div>
+  <div class="lg"><span class="sw" style="background:var(--confirmed)"></span><span data-i18n="lg_confirmed">Confirmé</span></div>
+  <div class="lg"><span class="sw" style="background:var(--blocked)"></span><span data-i18n="lg_blocked">Bloqué</span></div>
+</div>
+
+<div id="rightstack">
+  <button class="iconbtn" id="locBtn" title="Locate">📍</button>
+  <button class="iconbtn" id="layerBtn" title="Satellite">🛰</button>
+</div>
+
+<!-- bottom sheet -->
 <div id="sheet">
   <div class="grip"></div>
   <div class="row">
     <div class="grow">
-      <div class="count"><b id="cStalls">0</b> stalls &nbsp;·&nbsp; <span id="cRows">0</span> rows</div>
+      <div class="stats">
+        <span><b id="cTotal">0</b> <span data-i18n="s_stalls">emplacements</span></span>
+        <span><b id="cFree">0</b> <span data-i18n="s_free">libres</span></span>
+        <span class="staffonly"><b id="cPending" class="pendingn">0</b> <span data-i18n="s_pending">à valider</span></span>
+        <span><b id="cConfirmed">0</b> <span data-i18n="s_confirmed">confirmés</span></span>
+      </div>
     </div>
-    <button class="ghost" id="exportBtn">Export</button>
-    <button class="ghost" id="clearBtn">Clear</button>
   </div>
-  <div class="row" style="margin-top:10px">
-    <button class="primary" id="addBtn">＋ Add row of stalls</button>
+
+  <!-- staff controls -->
+  <div class="row staffonly" style="margin-top:10px">
+    <button class="primary" id="addBtn" data-i18n="add_row">＋ Ajouter une rangée</button>
+  </div>
+  <div class="row staffonly" style="margin-top:8px">
+    <button class="ghost wide" id="reservationsBtn"><span data-i18n="reservations">Réservations</span> <span id="resBadge"></span></button>
+    <button class="ghost" id="exportBtn" data-i18n="export">Exporter</button>
+    <button class="ghost adminonly" id="clearBtn" data-i18n="clear">Vider</button>
+  </div>
+
+  <!-- visitor hint -->
+  <div class="row" id="userHint" style="margin-top:10px">
+    <button class="primary" id="reserveCta" data-i18n="user_cta">Choisir un emplacement à réserver</button>
   </div>
 </div>
 
-<!-- params dialog -->
+<!-- ============ PARAMS DIALOG (staff) ============ -->
 <div class="scrim" id="scrim">
   <div class="dialog">
-    <h2>Place stalls along this segment</h2>
+    <h2 data-i18n="place_title">Placer des emplacements</h2>
     <p class="sub" id="segInfo">—</p>
 
     <div class="field">
-      <div><label>Stall length</label><span class="hint">along the street</span></div>
-      <div class="stepper" data-key="len">
-        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
-      </div>
+      <div><label data-i18n="p_len">Longueur</label><span class="hint" data-i18n="p_len_h">le long de la rue</span></div>
+      <div class="stepper" data-key="len"><button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button></div>
     </div>
     <div class="field">
-      <div><label>Stall depth</label><span class="hint">across, into the kerb</span></div>
-      <div class="stepper" data-key="depth">
-        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
-      </div>
+      <div><label data-i18n="p_depth">Profondeur</label><span class="hint" data-i18n="p_depth_h">vers le trottoir</span></div>
+      <div class="stepper" data-key="depth"><button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button></div>
     </div>
     <div class="field">
-      <div><label>Gap between stalls</label></div>
-      <div class="stepper" data-key="gap">
-        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
-      </div>
+      <div><label data-i18n="p_gap">Espace entre</label></div>
+      <div class="stepper" data-key="gap"><button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button></div>
     </div>
     <div class="field">
-      <div><label>Offset from centre line</label><span class="hint">half street width</span></div>
-      <div class="stepper" data-key="offset">
-        <button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button>
-      </div>
+      <div><label data-i18n="p_offset">Décalage de l'axe</label><span class="hint" data-i18n="p_offset_h">demi-largeur de rue</span></div>
+      <div class="stepper" data-key="offset"><button data-d="-0.5">−</button><div class="val mono"></div><button data-d="0.5">＋</button></div>
     </div>
     <div class="field" style="border-bottom:none">
-      <label>Sides</label>
+      <label data-i18n="p_sides">Côtés</label>
       <div class="sides">
-        <button class="chip on" data-side="left">Left</button>
-        <button class="chip on" data-side="right">Right</button>
+        <button class="chip on" data-side="left" data-i18n="side_left">Gauche</button>
+        <button class="chip on" data-side="right" data-i18n="side_right">Droite</button>
       </div>
     </div>
 
     <div class="actions">
-      <button class="ghost" id="cancelDlg">Cancel</button>
-      <button class="primary" id="placeBtn" style="width:auto">Place stalls</button>
+      <button class="ghost" id="cancelDlg" data-i18n="cancel">Annuler</button>
+      <button class="primary" id="placeBtn" style="width:auto" data-i18n="place_btn">Placer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ STALL SHEET ============ -->
+<div class="scrim" id="stallScrim">
+  <div class="dialog" id="stallDialog"><!-- filled dynamically --></div>
+</div>
+
+<!-- ============ RESERVATIONS PANEL ============ -->
+<div class="scrim" id="resScrim">
+  <div class="dialog">
+    <h2 data-i18n="reservations">Réservations</h2>
+    <p class="sub" data-i18n="res_sub">Validez ou refusez les demandes des visiteurs.</p>
+    <div id="resList"></div>
+    <div class="actions">
+      <button class="ghost" id="closeRes" style="flex:1" data-i18n="close">Fermer</button>
     </div>
   </div>
 </div>
@@ -170,207 +365,624 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-/* ---------- guard: make sure Leaflet loaded ---------- */
-if (typeof L === 'undefined') {
-  document.getElementById('status').innerHTML =
-    'Map library blocked here — open this file in your phone browser instead.';
-} else {
-/* ---------- map ---------- */
-const map = L.map('map', {zoomControl:false, tap:true}).setView([48.8566, 2.3522], 18);
-L.control.zoom({position:'bottomright'}).addTo(map);
+/* =====================================================================
+   Brocante POC — open-source stack (Leaflet + OSM/Esri tiles).
+   Data layer (DB) is intentionally isolated so it can be swapped for
+   Firebase/Firestore later with no UI changes.
+   ===================================================================== */
 
-const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  {maxZoom:22, maxNativeZoom:19, attribution:'© OpenStreetMap'});
-const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {maxZoom:22, maxNativeZoom:19, attribution:'© Esri'});
-osm.addTo(map);
-let satOn=false;
-document.getElementById('layerBtn').onclick=()=>{
-  satOn=!satOn;
-  if(satOn){map.removeLayer(osm);sat.addTo(map);layerBtn.textContent='🗺 Map';}
-  else{map.removeLayer(sat);osm.addTo(map);layerBtn.textContent='🛰 Satellite';}
+/* ---------- i18n ---------- */
+const I18N = {
+  fr:{
+    app_name:"Brocante", app_tag:"Plan des emplacements & réservations",
+    tab_visitor:"Visiteur", tab_staff:"Équipe",
+    your_name:"Votre nom", contact_opt:"Contact (téléphone ou e-mail) — optionnel",
+    enter_visitor:"Entrer en visiteur",
+    username:"Identifiant", password:"Mot de passe", sign_in:"Se connecter",
+    demo_accounts:"Comptes de démonstration",
+    role_admin:"Administrateur", role_moderator:"Modérateur", role_user:"Visiteur",
+    s_stalls:"emplacements", s_free:"libres", s_pending:"à valider", s_confirmed:"confirmés",
+    add_row:"＋ Ajouter une rangée", reservations:"Réservations", export:"Exporter", clear:"Vider",
+    user_cta:"Touchez un emplacement libre pour réserver",
+    lg_free:"Libre", lg_pending:"En attente", lg_confirmed:"Confirmé", lg_blocked:"Bloqué",
+    place_title:"Placer des emplacements",
+    p_len:"Longueur", p_len_h:"le long de la rue", p_depth:"Profondeur", p_depth_h:"vers le trottoir",
+    p_gap:"Espace entre", p_offset:"Décalage de l'axe", p_offset_h:"demi-largeur de rue",
+    p_sides:"Côtés", side_left:"Gauche", side_right:"Droite",
+    cancel:"Annuler", place_btn:"Placer", close:"Fermer", save:"Enregistrer",
+    res_sub:"Validez ou refusez les demandes des visiteurs.",
+    // statuses
+    st_free:"Libre", st_pending:"En attente", st_confirmed:"Confirmé", st_blocked:"Bloqué",
+    // stall sheet
+    stall:"Emplacement", size:"Taille", side_l:"côté gauche", side_r:"côté droit",
+    reserve:"Réserver cet emplacement", reserve_for:"Réserver au nom de",
+    name:"Nom", contact:"Contact", note:"Note (optionnel)", note_ph:"Type de marchandise, besoins…",
+    confirm_reserve:"Confirmer la réservation",
+    your_request:"Votre demande est enregistrée.", awaiting:"En attente de validation par l'organisateur.",
+    cancel_mine:"Annuler ma réservation",
+    not_available:"Cet emplacement n'est pas disponible.",
+    reserved_by:"Réservé par", requested:"Demandé le",
+    validate:"Valider", reject:"Refuser", validate_only_admin:"Seul l'administrateur peut valider.",
+    label:"Étiquette / exposant", block:"Bloquer", unblock:"Débloquer", del:"Supprimer",
+    free_it:"Libérer",
+    // toasts / status
+    tap_add:"Touchez <b>Ajouter une rangée</b> pour commencer",
+    tap_first:"Touchez le <b>premier croisement</b> (début de la rue)",
+    tap_second:"Touchez le <b>croisement suivant</b> (fin de la rue)",
+    tap_browse:"Touchez un emplacement <b>libre</b> pour le réserver",
+    seg_too_short:"Segment trop court", placed:"emplacements placés",
+    saved:"Enregistré", deleted:"Supprimé", reserved_ok:"Réservation envoyée",
+    res_cancelled:"Réservation annulée", validated:"Réservation validée", rejected:"Réservation refusée",
+    blocked_ok:"Emplacement bloqué", unblocked_ok:"Emplacement débloqué", freed_ok:"Emplacement libéré",
+    nothing_export:"Rien à exporter", confirm_clear:"Supprimer tous les emplacements ?",
+    no_pending:"Aucune demande en attente.", name_required:"Indiquez un nom.",
+    bad_login:"Identifiant ou mot de passe incorrect.",
+    seg_summary:(len,n,tot)=>`Segment <b>${len} m</b> → jusqu'à <b>${tot}</b> emplacements (${n} par côté)`,
+    up_to:"jusqu'à", per_side:"par côté"
+  },
+  en:{
+    app_name:"Flea Market", app_tag:"Stall layout & reservations",
+    tab_visitor:"Visitor", tab_staff:"Staff",
+    your_name:"Your name", contact_opt:"Contact (phone or email) — optional",
+    enter_visitor:"Enter as visitor",
+    username:"Username", password:"Password", sign_in:"Sign in",
+    demo_accounts:"Demo accounts",
+    role_admin:"Administrator", role_moderator:"Moderator", role_user:"Visitor",
+    s_stalls:"stalls", s_free:"free", s_pending:"to validate", s_confirmed:"confirmed",
+    add_row:"＋ Add a row", reservations:"Reservations", export:"Export", clear:"Clear",
+    user_cta:"Tap a free stall to reserve",
+    lg_free:"Free", lg_pending:"Pending", lg_confirmed:"Confirmed", lg_blocked:"Blocked",
+    place_title:"Place stalls",
+    p_len:"Length", p_len_h:"along the street", p_depth:"Depth", p_depth_h:"toward the kerb",
+    p_gap:"Gap between", p_offset:"Offset from centre", p_offset_h:"half street width",
+    p_sides:"Sides", side_left:"Left", side_right:"Right",
+    cancel:"Cancel", place_btn:"Place", close:"Close", save:"Save",
+    res_sub:"Validate or reject visitor requests.",
+    st_free:"Free", st_pending:"Pending", st_confirmed:"Confirmed", st_blocked:"Blocked",
+    stall:"Stall", size:"Size", side_l:"left side", side_r:"right side",
+    reserve:"Reserve this stall", reserve_for:"Reserve on behalf of",
+    name:"Name", contact:"Contact", note:"Note (optional)", note_ph:"Goods type, needs…",
+    confirm_reserve:"Confirm reservation",
+    your_request:"Your request has been recorded.", awaiting:"Awaiting organiser validation.",
+    cancel_mine:"Cancel my reservation",
+    not_available:"This stall is not available.",
+    reserved_by:"Reserved by", requested:"Requested",
+    validate:"Validate", reject:"Reject", validate_only_admin:"Only the administrator can validate.",
+    label:"Label / vendor", block:"Block", unblock:"Unblock", del:"Delete",
+    free_it:"Free up",
+    tap_add:"Tap <b>Add a row</b> to begin",
+    tap_first:"Tap the <b>first intersection</b> (start of street)",
+    tap_second:"Tap the <b>next intersection</b> (end of street)",
+    tap_browse:"Tap a <b>free</b> stall to reserve it",
+    seg_too_short:"Segment too short", placed:"stalls placed",
+    saved:"Saved", deleted:"Deleted", reserved_ok:"Reservation sent",
+    res_cancelled:"Reservation cancelled", validated:"Reservation validated", rejected:"Reservation rejected",
+    blocked_ok:"Stall blocked", unblocked_ok:"Stall unblocked", freed_ok:"Stall freed",
+    nothing_export:"Nothing to export", confirm_clear:"Delete all stalls?",
+    no_pending:"No pending requests.", name_required:"Please enter a name.",
+    bad_login:"Wrong username or password.",
+    seg_summary:(len,n,tot)=>`Segment <b>${len} m</b> → up to <b>${tot}</b> stalls (${n} per side)`,
+    up_to:"up to", per_side:"per side"
+  }
+};
+let LANG = 'fr';
+function t(k){const v=I18N[LANG][k]; return v===undefined?k:v;}
+function applyI18n(){
+  document.documentElement.lang=LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n'); const v=I18N[LANG][k];
+    if(typeof v==='string') el.textContent=v;
+  });
+  document.querySelectorAll('.langtoggle button').forEach(b=>b.classList.toggle('on', b.dataset.lang===LANG));
+  // dynamic bits
+  refreshStatus();
+  if(stallScrim.classList.contains('show') && openId) openStall(openId);
+  if(resScrim.classList.contains('show')) renderReservations();
+  refreshCounts();
+}
+
+/* ---------- safe storage (memory fallback; swap for Firestore later) ---------- */
+const Safe = (()=>{
+  let mem={}; let ok=true;
+  try{const k='__t';localStorage.setItem(k,'1');localStorage.removeItem(k);}catch(e){ok=false;}
+  return {
+    get(k){ try{return ok?localStorage.getItem(k):mem[k];}catch(e){return mem[k];} },
+    set(k,v){ try{ok?localStorage.setItem(k,v):mem[k]=v;}catch(e){mem[k]=v;} },
+    del(k){ try{ok?localStorage.removeItem(k):delete mem[k];}catch(e){delete mem[k];} }
+  };
+})();
+
+/* =====================================================================
+   DB — the only module that touches storage. Mirror these methods on a
+   Firestore wrapper (collection 'stalls') to migrate. Each stall doc:
+   { id, rowId, side:'L'|'R', n, label, coords:[[lat,lng]*4],
+     status:'free'|'pending'|'confirmed'|'blocked',
+     res:{ name, contact, note, userId, userName, at } | null }
+   ===================================================================== */
+const DB = {
+  _key:'brocante.stalls.v1',
+  stalls:new Map(),
+  load(){
+    this.stalls.clear();
+    try{
+      const raw=Safe.get(this._key);
+      if(raw){ JSON.parse(raw).forEach(s=>this.stalls.set(s.id,s)); }
+    }catch(e){}
+  },
+  persist(){ Safe.set(this._key, JSON.stringify([...this.stalls.values()])); },
+  all(){ return [...this.stalls.values()]; },
+  get(id){ return this.stalls.get(id); },
+  put(s){ this.stalls.set(s.id,s); this.persist(); },
+  remove(id){ this.stalls.delete(id); this.persist(); },
+  clear(){ this.stalls.clear(); this.persist(); }
 };
 
-// try to centre on user once
-map.locate({setView:true, maxZoom:19});
+/* ---------- session ---------- */
+const ACCOUNTS = {
+  admin:{password:'admin123', role:'admin', name:'Admin'},
+  mod:  {password:'mod123',   role:'moderator', name:'Modérateur'}
+};
+let USER=null; // {id, name, role, contact}
+function saveSession(){ USER?Safe.set('brocante.user',JSON.stringify(USER)):Safe.del('brocante.user'); }
+function loadSession(){ try{const r=Safe.get('brocante.user'); if(r) USER=JSON.parse(r);}catch(e){} }
+function isStaff(){ return USER && (USER.role==='admin'||USER.role==='moderator'); }
+function isAdmin(){ return USER && USER.role==='admin'; }
 
-/* ---------- local metric helpers (planar ENU, accurate at street scale) ---------- */
+/* ---------- UI refs ---------- */
+const $=s=>document.querySelector(s);
+const statusEl=$('#status'), addBtn=$('#addBtn'), scrim=$('#scrim'),
+      segInfo=$('#segInfo'), toastEl=$('#toast'),
+      stallScrim=$('#stallScrim'), stallDialog=$('#stallDialog'),
+      resScrim=$('#resScrim'), resList=$('#resList');
+
+function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>toastEl.classList.remove('show'),1600);}
+function refreshStatus(){
+  if(!USER){return;}
+  if(mode==='pickA'){ setStatus(t('tap_first')); }
+  else if(mode==='pickB'){ setStatus(t('tap_second')); }
+  else if(isStaff()){ setStatus(t('tap_add')); }
+  else { setStatus(t('tap_browse')); }
+}
+function setStatus(html){statusEl.innerHTML=html;}
+
+/* =====================================================================
+   MAP
+   ===================================================================== */
+let map, osm, sat, satOn=false;
+const DEMO_CENTER=[48.85648, 2.35222];
+
+function initMap(){
+  map=L.map('map',{zoomControl:false,tap:true}).setView(DEMO_CENTER,19);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:22,maxNativeZoom:19,attribution:'© OpenStreetMap'});
+  sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:22,maxNativeZoom:19,attribution:'© Esri'});
+  osm.addTo(map);
+  $('#layerBtn').onclick=()=>{
+    satOn=!satOn;
+    if(satOn){map.removeLayer(osm);sat.addTo(map);$('#layerBtn').textContent='🗺';}
+    else{map.removeLayer(sat);osm.addTo(map);$('#layerBtn').textContent='🛰';}
+  };
+  $('#locBtn').onclick=()=>map.locate({setView:true,maxZoom:19});
+  map.on('click',onMapClick);
+}
+
+/* ---------- metric frame (planar ENU, accurate at street scale) ---------- */
 function frame(ref){
   const mLat=111320, mLng=111320*Math.cos(ref.lat*Math.PI/180);
   return {
-    toXY:(p)=>({x:(p.lng-ref.lng)*mLng, y:(p.lat-ref.lat)*mLat}),
-    toLL:(xy)=>L.latLng(ref.lat+xy.y/mLat, ref.lng+xy.x/mLng)
+    toXY:p=>({x:(p.lng-ref.lng)*mLng, y:(p.lat-ref.lat)*mLat}),
+    toLL:xy=>L.latLng(ref.lat+xy.y/mLat, ref.lng+xy.x/mLng)
   };
 }
 
-/* ---------- state ---------- */
-let mode='idle';            // idle | pickA | pickB
-let A=null,B=null,tempLine=null,tempMarks=[];
-const rows=[];              // {places:[{poly,label,side,n}]}
-const params={len:3.0, depth:1.5, gap:0.0, offset:3.5};
-let sides={left:true,right:true};
-
-/* ---------- ui refs ---------- */
-const statusEl=document.getElementById('status');
-const addBtn=document.getElementById('addBtn');
-const scrim=document.getElementById('scrim');
-const segInfo=document.getElementById('segInfo');
-const toastEl=document.getElementById('toast');
-
-function setStatus(html){statusEl.innerHTML=html;}
-function toast(t){toastEl.textContent=t;toastEl.classList.add('show');setTimeout(()=>toastEl.classList.remove('show'),1500);}
-function refreshCounts(){
-  let s=0;rows.forEach(r=>s+=r.places.length);
-  document.getElementById('cStalls').textContent=s;
-  document.getElementById('cRows').textContent=rows.length;
+/* ---------- stall geometry builder (used by seed + staff create) ---------- */
+function buildStalls(A,B,p,sides,rowId){
+  const f=frame(A);
+  const b=f.toXY(B);
+  const L_=Math.hypot(b.x,b.y); if(L_<0.5) return [];
+  const dir={x:b.x/L_,y:b.y/L_}, perp={x:-dir.y,y:dir.x};
+  const step=p.len+p.gap, n=Math.floor(L_/step);
+  const out=[];
+  const sideList=[];
+  if(sides.left) sideList.push({s:1,key:'L'});
+  if(sides.right) sideList.push({s:-1,key:'R'});
+  sideList.forEach(side=>{
+    for(let i=0;i<n;i++){
+      const a0=i*step, a1=a0+p.len, inn=p.offset, ou8=p.offset+p.depth;
+      const corner=(al,ac)=>{const ll=f.toLL({x:dir.x*al+side.s*perp.x*ac, y:dir.y*al+side.s*perp.y*ac});return [ll.lat,ll.lng];};
+      out.push({
+        id:'S-'+rowId+'-'+side.key+(i+1),
+        rowId, side:side.key, n:i+1, label:'',
+        coords:[corner(a0,inn),corner(a1,inn),corner(a1,ou8),corner(a0,ou8)],
+        status:'free', res:null,
+        size:{len:p.len,depth:p.depth}
+      });
+    }
+  });
+  return out;
 }
 
-/* ---------- add-row flow ---------- */
-addBtn.onclick=()=>{
-  if(mode==='idle'){
-    mode='pickA';addBtn.textContent='Cancel';addBtn.classList.add('armed');
-    setStatus('Tap the <b>first intersection</b> (start of the street)');
+/* ---------- rendering ---------- */
+const layers=new Map(); // id -> L.polygon
+const STATUS_COLOR={free:'#74905a',pending:'#e8a33d',confirmed:'#5aa0c4',blocked:'#6b6860'};
+function styleFor(s){
+  return {color:'#000', weight:1, fillColor:STATUS_COLOR[s.status], fillOpacity:.6,
+          dashArray: s.status==='blocked'?'2,4':null};
+}
+function renderStall(s){
+  let poly=layers.get(s.id);
+  if(!poly){
+    poly=L.polygon(s.coords, styleFor(s)).addTo(map);
+    poly.on('click',()=>openStall(s.id));
+    layers.set(s.id,poly);
   } else {
-    cancelPick();
+    poly.setStyle(styleFor(s));
   }
-};
-function cancelPick(){
-  mode='idle';A=null;B=null;
-  if(tempLine){map.removeLayer(tempLine);tempLine=null;}
-  tempMarks.forEach(m=>map.removeLayer(m));tempMarks=[];
-  addBtn.textContent='＋ Add row of stalls';addBtn.classList.remove('armed');
-  setStatus('Tap <b>Add row</b> to begin');
+  // tooltip: vendor name or reserved name
+  const tip = s.label || (s.res && s.res.name) || '';
+  if(poly.getTooltip()) poly.unbindTooltip();
+  if(tip) poly.bindTooltip(tip,{permanent:true,direction:'center',className:'lbl'});
+}
+function renderAll(){
+  // remove orphan layers
+  for(const [id,poly] of layers){ if(!DB.get(id)){ map.removeLayer(poly); layers.delete(id); } }
+  DB.all().forEach(renderStall);
+  refreshCounts();
+}
+function refreshCounts(){
+  const all=DB.all();
+  const c={total:all.length, free:0, pending:0, confirmed:0};
+  all.forEach(s=>{ if(s.status==='free')c.free++; else if(s.status==='pending')c.pending++; else if(s.status==='confirmed')c.confirmed++; });
+  $('#cTotal').textContent=c.total; $('#cFree').textContent=c.free;
+  $('#cPending').textContent=c.pending; $('#cConfirmed').textContent=c.confirmed;
+  const badge=$('#resBadge');
+  badge.textContent=c.pending?('· '+c.pending):'';
+  badge.style.color='var(--pending)';
 }
 
-map.on('click',(e)=>{
+/* =====================================================================
+   STAFF — create rows
+   ===================================================================== */
+let mode='idle', A=null,B=null,tempLine=null,tempMarks=[];
+const params={len:3.0,depth:1.5,gap:0.0,offset:3.5};
+let sidesSel={left:true,right:true};
+
+function startPick(){ mode='pickA'; addBtn.textContent='✕ '+t('cancel'); addBtn.classList.add('armed'); refreshStatus(); }
+function cancelPick(){
+  mode='idle'; A=B=null;
+  if(tempLine){map.removeLayer(tempLine);tempLine=null;}
+  tempMarks.forEach(m=>map.removeLayer(m)); tempMarks=[];
+  addBtn.textContent=t('add_row'); addBtn.classList.remove('armed'); refreshStatus();
+}
+function onMapClick(e){
+  if(!isStaff()) return;
   if(mode==='pickA'){
     A=e.latlng;
     tempMarks.push(L.circleMarker(A,{radius:7,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map));
-    mode='pickB';
-    setStatus('Tap the <b>next intersection</b> (end of the street)');
+    mode='pickB'; refreshStatus();
   } else if(mode==='pickB'){
     B=e.latlng;
     tempMarks.push(L.circleMarker(B,{radius:7,color:'#fff',weight:2,fillColor:'#e8a33d',fillOpacity:1}).addTo(map));
     tempLine=L.polyline([A,B],{color:'#e8a33d',weight:2,dashArray:'5,6'}).addTo(map);
-    mode='idle';addBtn.textContent='＋ Add row of stalls';addBtn.classList.remove('armed');
+    mode='idle'; addBtn.textContent=t('add_row'); addBtn.classList.remove('armed');
     openDialog();
   }
-});
-
-/* ---------- params dialog ---------- */
-function fmt(v){return v.toFixed(1)+' m';}
-function syncDialog(){
-  document.querySelectorAll('.stepper').forEach(s=>{
-    s.querySelector('.val').textContent=fmt(params[s.dataset.key]);
-  });
-  document.querySelectorAll('.chip').forEach(c=>{
-    c.classList.toggle('on', sides[c.dataset.side]);
-  });
 }
-document.querySelectorAll('.stepper button').forEach(b=>{
-  b.onclick=()=>{
-    const key=b.parentElement.dataset.key;
-    params[key]=Math.max(0, +(params[key]+parseFloat(b.dataset.d)).toFixed(1));
-    syncDialog();updateSegInfo();
-  };
-});
-document.querySelectorAll('.chip').forEach(c=>{
-  c.onclick=()=>{sides[c.dataset.side]=!sides[c.dataset.side];syncDialog();updateSegInfo();};
-});
 function segLen(){const f=frame(A);const b=f.toXY(B);return Math.hypot(b.x,b.y);}
 function perRow(){const step=params.len+params.gap;return step<=0?0:Math.floor(segLen()/step);}
+function fmt(v){return v.toFixed(1)+' m';}
+function syncDialog(){
+  document.querySelectorAll('.stepper').forEach(s=>s.querySelector('.val').textContent=fmt(params[s.dataset.key]));
+  document.querySelectorAll('.chip[data-side]').forEach(c=>c.classList.toggle('on',sidesSel[c.dataset.side]));
+}
 function updateSegInfo(){
-  const n=perRow();const sideCount=(sides.left?1:0)+(sides.right?1:0);
-  segInfo.innerHTML=`Segment <b>${segLen().toFixed(1)} m</b> → up to <b>${n*sideCount}</b> stalls (${n} per side)`;
+  const n=perRow(), sc=(sidesSel.left?1:0)+(sidesSel.right?1:0);
+  segInfo.innerHTML=t('seg_summary')(segLen().toFixed(1), n, n*sc);
 }
 function openDialog(){syncDialog();updateSegInfo();scrim.classList.add('show');}
-document.getElementById('cancelDlg').onclick=()=>{scrim.classList.remove('show');cancelPick();};
-document.getElementById('placeBtn').onclick=()=>{scrim.classList.remove('show');generateRow();cancelPick();};
-
-/* ---------- generate stalls ---------- */
 function generateRow(){
-  if(!A||!B)return;
-  const f=frame(A);
-  const a={x:0,y:0}, b=f.toXY(B);
-  const L_=Math.hypot(b.x,b.y); if(L_<0.5){toast('Segment too short');return;}
-  const dir={x:b.x/L_, y:b.y/L_};
-  const perp={x:-dir.y, y:dir.x};           // left of travel direction
-  const step=params.len+params.gap;
-  const n=Math.floor(L_/step);
-  const row={places:[]};
-  const sideList=[];
-  if(sides.left) sideList.push({s:1, key:'L', color:'#e8a33d'});
-  if(sides.right) sideList.push({s:-1, key:'R', color:'#5aa0c4'});
-
-  sideList.forEach(side=>{
-    for(let i=0;i<n;i++){
-      const a0=i*step, a1=a0+params.len;
-      const inn=params.offset, out=params.offset+params.depth;
-      const corner=(along,across)=>f.toLL({
-        x: dir.x*along + side.s*perp.x*across,
-        y: dir.y*along + side.s*perp.y*across
-      });
-      const poly=L.polygon([
-        corner(a0,inn), corner(a1,inn), corner(a1,out), corner(a0,out)
-      ],{color:'#000',weight:1,fillColor:side.color,fillOpacity:.55}).addTo(map);
-      const place={poly, label:'', side:side.key, n:i+1};
-      poly.on('click',()=>openStall(place));
-      row.places.push(place);
-    }
-  });
-  rows.push(row);refreshCounts();
-  toast(row.places.length+' stalls placed');
+  if(!A||!B) return;
+  if(segLen()<0.5){toast(t('seg_too_short'));return;}
+  const rowId=Date.now().toString(36);
+  const stalls=buildStalls(A,B,params,sidesSel,rowId);
+  if(!stalls.length){toast(t('seg_too_short'));return;}
+  stalls.forEach(s=>{DB.put(s);renderStall(s);});
+  refreshCounts();
+  toast(stalls.length+' '+t('placed'));
 }
 
-/* ---------- edit / remove a stall ---------- */
-function openStall(place){
-  const div=document.createElement('div');div.className='pop';
-  div.innerHTML=`
-    <h3>Stall ${place.side}${place.n}</h3>
-    <div class="meta">${params.len.toFixed(1)} × ${params.depth.toFixed(1)} m · ${place.side==='L'?'left':'right'} side</div>
-    <input type="text" placeholder="Assign vendor / label" value="${place.label.replace(/"/g,'&quot;')}" />
-    <div class="prow">
-      <button class="del">Delete</button>
-      <button class="save">Save</button>
+/* =====================================================================
+   STALL SHEET — reserve (user) / edit (staff)
+   ===================================================================== */
+let openId=null;
+function statusBadge(status){
+  const map={free:'b-free',pending:'b-pending',confirmed:'b-confirmed',blocked:'b-blocked'};
+  const label={free:'st_free',pending:'st_pending',confirmed:'st_confirmed',blocked:'st_blocked'};
+  return `<span class="badge ${map[status]}"><span class="d" style="background:${STATUS_COLOR[status]}"></span>${t(label[status])}</span>`;
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function openStall(id){
+  const s=DB.get(id); if(!s) return;
+  openId=id;
+  const title=`${t('stall')} ${s.side}${s.n}`;
+  const sizeStr=`${s.size?s.size.len.toFixed(1):'?'} × ${s.size?s.size.depth.toFixed(1):'?'} m · ${s.side==='L'?t('side_l'):t('side_r')}`;
+  let html=`<h2>${title} ${statusBadge(s.status)}</h2><p class="sub">${sizeStr}</p>`;
+
+  if(isStaff()){
+    html += staffSheet(s);
+  } else {
+    html += userSheet(s);
+  }
+  html += `<div class="actions"><button class="ghost" id="closeStall" style="flex:1">${t('close')}</button></div>`;
+  stallDialog.innerHTML=html;
+  wireStall(s);
+  stallScrim.classList.add('show');
+}
+
+function userSheet(s){
+  if(s.status==='free'){
+    return `
+      <label class="lbl">${t('name')}</label>
+      <input class="inp" id="rName" value="${esc(USER.name)}" />
+      <label class="lbl">${t('contact')}</label>
+      <input class="inp" id="rContact" value="${esc(USER.contact||'')}" placeholder="06 …" />
+      <label class="lbl">${t('note')}</label>
+      <input class="inp" id="rNote" placeholder="${t('note_ph')}" />
+      <button class="primary" id="doReserve">${t('confirm_reserve')}</button>`;
+  }
+  if(s.status==='pending' && s.res && s.res.userId===USER.id){
+    return `
+      <div class="resbox">
+        <div>${t('your_request')}</div>
+        <div class="meta" style="margin-top:6px">${t('awaiting')}</div>
+      </div>
+      <button class="b-del" id="cancelMine" style="width:100%;padding:13px">${t('cancel_mine')}</button>`;
+  }
+  // pending(other) / confirmed / blocked
+  return `<div class="resbox"><div>${t('not_available')}</div></div>`;
+}
+
+function staffSheet(s){
+  let h=`
+    <label class="lbl">${t('label')}</label>
+    <input class="inp" id="sLabel" value="${esc(s.label)}" placeholder="${t('label')}" />`;
+  if(s.res){
+    h+=`<div class="resbox">
+      <div class="k">${t('reserved_by')}</div>
+      <div style="font-weight:700">${esc(s.res.name)}</div>
+      ${s.res.contact?`<div class="meta">${esc(s.res.contact)}</div>`:''}
+      ${s.res.note?`<div class="meta" style="margin-top:4px">“${esc(s.res.note)}”</div>`:''}
+      <div class="meta" style="margin-top:6px">${t('requested')} ${new Date(s.res.at).toLocaleString(LANG)}</div>
     </div>`;
-  const input=div.querySelector('input');
-  place.poly.bindPopup(div,{closeButton:false,minWidth:200}).openPopup();
-  div.querySelector('.save').onclick=()=>{
-    place.label=input.value.trim();
-    place.poly.setStyle({weight: place.label?3:1, color: place.label?'#fff':'#000'});
-    if(place.label) place.poly.bindTooltip(place.label,{permanent:true,direction:'center',className:'lbl'});
-    place.poly.closePopup();
+  }
+  // validation (admin only) when pending
+  if(s.status==='pending'){
+    if(isAdmin()){
+      h+=`<div class="btnrow"><button class="b-del" id="rejectBtn">${t('reject')}</button><button class="b-ok" id="validateBtn">${t('validate')}</button></div>`;
+    } else {
+      h+=`<div class="meta" style="margin:6px 0">${t('validate_only_admin')}</div>`;
+    }
+  }
+  // free-up for confirmed
+  if(s.status==='confirmed'){
+    h+=`<div class="btnrow"><button class="b-warn" id="freeBtn">${t('free_it')}</button></div>`;
+  }
+  // block toggle + save + delete
+  h+=`<div class="btnrow" style="margin-top:8px">
+        <button class="ghost" id="blockBtn">${s.status==='blocked'?t('unblock'):t('block')}</button>
+        <button class="b-ok" id="saveBtn">${t('save')}</button>
+      </div>
+      <div class="btnrow"><button class="b-del" id="delBtn">${t('del')}</button></div>`;
+  return h;
+}
+
+function wireStall(s){
+  $('#closeStall').onclick=closeStall;
+  // user
+  const doRes=$('#doReserve');
+  if(doRes) doRes.onclick=()=>{
+    const name=$('#rName').value.trim();
+    if(!name){toast(t('name_required'));return;}
+    s.res={name, contact:$('#rContact').value.trim(), note:$('#rNote').value.trim(),
+           userId:USER.id, userName:USER.name, at:Date.now()};
+    s.status='pending'; DB.put(s); renderStall(s); refreshCounts();
+    closeStall(); toast(t('reserved_ok'));
   };
-  div.querySelector('.del').onclick=()=>{
-    map.removeLayer(place.poly);
-    rows.forEach(r=>{const i=r.places.indexOf(place);if(i>-1)r.places.splice(i,1);});
-    refreshCounts();
+  const cm=$('#cancelMine');
+  if(cm) cm.onclick=()=>{ s.status='free'; s.res=null; DB.put(s); renderStall(s); refreshCounts(); closeStall(); toast(t('res_cancelled')); };
+
+  // staff
+  const sv=$('#saveBtn');
+  if(sv) sv.onclick=()=>{ s.label=$('#sLabel').value.trim(); DB.put(s); renderStall(s); closeStall(); toast(t('saved')); };
+  const del=$('#delBtn');
+  if(del) del.onclick=()=>{ DB.remove(s.id); const p=layers.get(s.id); if(p){map.removeLayer(p);layers.delete(s.id);} refreshCounts(); closeStall(); toast(t('deleted')); };
+  const blk=$('#blockBtn');
+  if(blk) blk.onclick=()=>{
+    if(s.status==='blocked'){ s.status='free'; toast(t('unblocked_ok')); }
+    else { s.status='blocked'; s.res=null; toast(t('blocked_ok')); }
+    DB.put(s); renderStall(s); refreshCounts(); closeStall();
+  };
+  const val=$('#validateBtn');
+  if(val) val.onclick=()=>{ s.status='confirmed'; DB.put(s); renderStall(s); refreshCounts(); closeStall(); toast(t('validated')); if(resScrim.classList.contains('show'))renderReservations(); };
+  const rej=$('#rejectBtn');
+  if(rej) rej.onclick=()=>{ s.status='free'; s.res=null; DB.put(s); renderStall(s); refreshCounts(); closeStall(); toast(t('rejected')); if(resScrim.classList.contains('show'))renderReservations(); };
+  const free=$('#freeBtn');
+  if(free) free.onclick=()=>{ s.status='free'; s.res=null; DB.put(s); renderStall(s); refreshCounts(); closeStall(); toast(t('freed_ok')); };
+}
+function closeStall(){ stallScrim.classList.remove('show'); openId=null; }
+
+/* =====================================================================
+   RESERVATIONS PANEL (staff) — validate is admin-only
+   ===================================================================== */
+function renderReservations(){
+  const pending=DB.all().filter(s=>s.status==='pending')
+    .sort((a,b)=> (a.res?.at||0)-(b.res?.at||0));
+  if(!pending.length){ resList.innerHTML=`<div class="empty">${t('no_pending')}</div>`; return; }
+  resList.innerHTML=pending.map(s=>{
+    const r=s.res||{};
+    const acts = isAdmin()
+      ? `<button class="b-del" data-act="reject" data-id="${s.id}">${t('reject')}</button>
+         <button class="b-ok" data-act="validate" data-id="${s.id}">${t('validate')}</button>`
+      : `<button class="ghost" data-act="goto" data-id="${s.id}">${t('stall')}</button>`;
+    return `<div class="resitem">
+      <div class="info">
+        <div class="t">${t('stall')} ${s.side}${s.n} · ${esc(r.name||'')}</div>
+        <div class="s">${esc(r.contact||'')}${r.note?' · “'+esc(r.note)+'”':''}</div>
+      </div>
+      <div class="act">${acts}</div>
+    </div>`;
+  }).join('');
+  resList.querySelectorAll('button[data-act]').forEach(b=>{
+    b.onclick=()=>{
+      const s=DB.get(b.dataset.id); if(!s)return;
+      const act=b.dataset.act;
+      if(act==='validate'){ s.status='confirmed'; toast(t('validated')); }
+      else if(act==='reject'){ s.status='free'; s.res=null; toast(t('rejected')); }
+      else if(act==='goto'){ resScrim.classList.remove('show'); map.fitBounds(layers.get(s.id).getBounds(),{maxZoom:20}); openStall(s.id); return; }
+      DB.put(s); renderStall(s); refreshCounts(); renderReservations();
+    };
+  });
+}
+
+/* =====================================================================
+   EXPORT (GeoJSON) / CLEAR
+   ===================================================================== */
+function exportGeoJSON(){
+  const feats=DB.all().map(s=>{
+    const ring=s.coords.map(c=>[c[1],c[0]]); ring.push(ring[0]);
+    return {type:'Feature',
+      properties:{id:s.id, label:s.label, side:s.side, status:s.status,
+        reserved_by:s.res?s.res.name:null, contact:s.res?s.res.contact:null,
+        length_m:s.size?s.size.len:null, depth_m:s.size?s.size.depth:null},
+      geometry:{type:'Polygon',coordinates:[ring]}};
+  });
+  if(!feats.length){toast(t('nothing_export'));return;}
+  const blob=new Blob([JSON.stringify({type:'FeatureCollection',features:feats},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='brocante-emplacements.geojson';a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* =====================================================================
+   SEED demo data (only first run)
+   ===================================================================== */
+function seedDemo(){
+  if(DB.all().length) return;
+  const rowId='demo';
+  const A=L.latLng(DEMO_CENTER[0], DEMO_CENTER[1]-0.0011);
+  const B=L.latLng(DEMO_CENTER[0]+0.00006, DEMO_CENTER[1]+0.0011);
+  const stalls=buildStalls(A,B,{len:3,depth:1.5,gap:0.3,offset:3.5},{left:true,right:true},rowId);
+  if(stalls[2]){ stalls[2].status='confirmed'; stalls[2].label='Antiquités Léa'; stalls[2].res={name:'Léa Martin',contact:'06 11 22 33 44',note:'',userId:'seed1',userName:'Léa Martin',at:Date.now()-86400000}; }
+  if(stalls[4]){ stalls[4].status='pending'; stalls[4].res={name:'Marc Petit',contact:'marc@example.com',note:'Livres anciens',userId:'seed2',userName:'Marc Petit',at:Date.now()-3600000}; }
+  if(stalls[7]){ stalls[7].status='blocked'; }
+  stalls.forEach(s=>DB.put(s));
+}
+
+/* =====================================================================
+   AUTH SCREEN
+   ===================================================================== */
+function showAuth(){ $('#auth').classList.remove('hidden'); document.body.classList.add('signed-out'); }
+function hideAuth(){ $('#auth').classList.add('hidden'); document.body.classList.remove('signed-out'); }
+
+function applyRole(){
+  document.body.classList.remove('role-admin','role-moderator','role-user');
+  if(!USER) return;
+  document.body.classList.add('role-'+USER.role);
+  $('#uName').textContent=USER.name;
+  const r=$('#uRole'); r.className='role '+(USER.role==='admin'?'admin':USER.role==='moderator'?'moderator':'user');
+  r.textContent = USER.role==='admin'?t('role_admin'):USER.role==='moderator'?t('role_moderator'):t('role_user');
+  // toggle bottom-sheet sections
+  $('#userHint').classList.toggle('hidden', isStaff());
+}
+
+function enterApp(){
+  hideAuth(); applyRole(); refreshStatus();
+  // make sure map sized correctly after reveal
+  setTimeout(()=>map.invalidateSize(),60);
+}
+
+/* ---------- wire auth ---------- */
+function wireAuth(){
+  const tabV=$('#tabVisitor'), tabS=$('#tabStaff'), pV=$('#paneVisitor'), pS=$('#paneStaff');
+  tabV.onclick=()=>{tabV.classList.add('on');tabS.classList.remove('on');pV.classList.add('on');pS.classList.remove('on');};
+  tabS.onclick=()=>{tabS.classList.add('on');tabV.classList.remove('on');pS.classList.add('on');pV.classList.remove('on');};
+
+  $('#enterVisitor').onclick=()=>{
+    const name=$('#visName').value.trim();
+    if(!name){ $('#visErr').textContent=t('name_required'); return; }
+    USER={id:'u-'+Date.now().toString(36), name, role:'user', contact:$('#visContact').value.trim()};
+    saveSession(); enterApp();
+  };
+  $('#enterStaff').onclick=()=>{
+    const u=$('#stUser').value.trim().toLowerCase(), p=$('#stPass').value;
+    const acc=ACCOUNTS[u];
+    if(!acc || acc.password!==p){ $('#stErr').textContent=t('bad_login'); return; }
+    USER={id:u, name:acc.name, role:acc.role, contact:''};
+    saveSession(); enterApp();
   };
 }
 
-/* ---------- clear / export ---------- */
-document.getElementById('clearBtn').onclick=()=>{
-  if(!rows.length)return;
-  if(!confirm('Remove all stalls?'))return;
-  rows.forEach(r=>r.places.forEach(p=>map.removeLayer(p.poly)));
-  rows.length=0;refreshCounts();
-};
-document.getElementById('exportBtn').onclick=()=>{
-  const features=[];
-  rows.forEach(r=>r.places.forEach(p=>{
-    const ll=p.poly.getLatLngs()[0].map(c=>[c.lng,c.lat]);
-    ll.push(ll[0]);
-    features.push({type:'Feature',
-      properties:{id:p.side+p.n, label:p.label, side:p.side, length_m:params.len, depth_m:params.depth},
-      geometry:{type:'Polygon',coordinates:[ll]}});
-  }));
-  if(!features.length){toast('Nothing to export');return;}
-  const blob=new Blob([JSON.stringify({type:'FeatureCollection',features},null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download='stalls.geojson';a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-};
-} // end Leaflet guard
+/* ---------- wire app chrome ---------- */
+function wireApp(){
+  // language toggles (both auth + app)
+  document.querySelectorAll('.langtoggle button').forEach(b=>{
+    b.onclick=()=>{ LANG=b.dataset.lang; Safe.set('brocante.lang',LANG); applyI18n(); applyRole(); };
+  });
+
+  $('#logoutBtn').onclick=()=>{ USER=null; saveSession(); cancelPick(); showAuth(); };
+
+  // staff create
+  addBtn.onclick=()=>{ if(mode==='idle') startPick(); else cancelPick(); };
+  // steppers
+  document.querySelectorAll('.stepper button').forEach(b=>{
+    b.onclick=()=>{ const key=b.parentElement.dataset.key;
+      params[key]=Math.max(0,+(params[key]+parseFloat(b.dataset.d)).toFixed(1)); syncDialog(); updateSegInfo(); };
+  });
+  document.querySelectorAll('.chip[data-side]').forEach(c=>{
+    c.onclick=()=>{ sidesSel[c.dataset.side]=!sidesSel[c.dataset.side]; syncDialog(); updateSegInfo(); };
+  });
+  $('#cancelDlg').onclick=()=>{ scrim.classList.remove('show'); cancelPick(); };
+  $('#placeBtn').onclick=()=>{ scrim.classList.remove('show'); generateRow(); cancelPick(); };
+
+  // reservations panel
+  $('#reservationsBtn').onclick=()=>{ renderReservations(); resScrim.classList.add('show'); };
+  $('#closeRes').onclick=()=>resScrim.classList.remove('show');
+
+  // export / clear
+  $('#exportBtn').onclick=exportGeoJSON;
+  $('#clearBtn').onclick=()=>{ if(!DB.all().length)return; if(!confirm(t('confirm_clear')))return;
+    DB.clear(); for(const[,p]of layers)map.removeLayer(p); layers.clear(); refreshCounts(); };
+
+  // user cta just nudges
+  $('#reserveCta').onclick=()=>toast(t('tap_browse').replace(/<[^>]+>/g,''));
+
+  // close sheets by tapping scrim background
+  [stallScrim,resScrim,scrim].forEach(sc=>{
+    sc.addEventListener('click',e=>{ if(e.target===sc) sc.classList.remove('show'); });
+  });
+}
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+function boot(){
+  if(typeof L==='undefined'){
+    document.getElementById('status').innerHTML='Map library blocked — open this file in your phone browser.';
+    return;
+  }
+  // restore language
+  const savedLang=Safe.get('brocante.lang'); if(savedLang==='fr'||savedLang==='en') LANG=savedLang;
+
+  initMap();
+  DB.load(); seedDemo(); renderAll();
+  loadSession();
+
+  wireAuth(); wireApp(); applyI18n();
+
+  if(USER){ enterApp(); } else { applyRole(); showAuth(); }
+}
+boot();
 </script>
 </body>
 </html>
