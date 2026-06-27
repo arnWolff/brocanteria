@@ -74,16 +74,34 @@
 
   /* ====== LEGEND ====== */
   #legend{
-    position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:560;
+    position:absolute;left:12px;top:50%;transform:translateY(-50%);z-index:560;
     background:rgba(31,29,22,.92);border:1px solid var(--line);border-radius:12px;padding:9px 11px;font-size:11px;
     box-shadow:0 6px 20px rgba(0,0,0,.4);backdrop-filter:blur(6px)
   }
   #legend .lg{display:flex;align-items:center;gap:7px;margin:3px 0;color:var(--muted)}
   #legend .sw{width:13px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.5)}
 
-  /* ====== FLOATING RIGHT BUTTONS ====== */
-  #rightstack{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom) + 92px);z-index:560;display:flex;flex-direction:column;gap:8px}
+  /* ====== FLOATING RIGHT BUTTONS (vertically centered) ====== */
+  #rightstack{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:560;display:flex;flex-direction:column;gap:8px}
   #rightstack .iconbtn{justify-content:center;width:46px;height:46px;padding:0;font-size:18px}
+
+  /* zoom control: top-right, tucked under the top bar, themed */
+  .leaflet-top.leaflet-right{top:calc(env(safe-area-inset-top) + 50px)}
+  .leaflet-bar a{background:rgba(31,29,22,.94);color:var(--paper);border-color:var(--line);width:34px;height:34px;line-height:34px}
+  .leaflet-bar a:hover{background:#2a2820}
+
+  /* transform gizmo (move + rotate handles) */
+  .giz{display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid #fff;font-weight:900;box-shadow:0 3px 10px rgba(0,0,0,.55);cursor:grab}
+  .giz-move{background:var(--amber);color:#241a08;font-size:17px}
+  .giz-rot{background:#fff;color:#241a08;font-size:15px}
+
+  /* selection toolbar inside the sheet */
+  #selBar{display:none}
+  body.selecting #selBar{display:block}
+  body.selecting .staffmain{display:none}
+  .selbtns{display:flex;gap:8px;margin-top:8px}
+  .selbtns button{flex:1;padding:12px;font-size:13px}
+  .selbtns .rotbtn{flex:0 0 46px;font-size:17px;padding:12px 0}
 
   /* ====== BOTTOM SHEET ====== */
   #sheet{
@@ -205,18 +223,18 @@
     <div class="tag" data-i18n="app_tag">Plan des emplacements & réservations</div>
 
     <div class="tabs">
-      <button id="tabVisitor" class="on" data-i18n="tab_visitor">Visiteur</button>
+      <button id="tabVisitor" class="on" data-i18n="tab_visitor">Exposant</button>
       <button id="tabStaff" data-i18n="tab_staff">Équipe</button>
     </div>
 
-    <!-- visitor pane -->
+    <!-- exposant pane -->
     <div class="pane on" id="paneVisitor">
       <label class="lbl" data-i18n="your_name">Votre nom</label>
       <input class="inp" id="visName" placeholder="Camille Dupont" autocomplete="name" />
       <label class="lbl" data-i18n="contact_opt">Contact (téléphone ou e-mail) — optionnel</label>
       <input class="inp" id="visContact" placeholder="06 12 34 56 78" autocomplete="tel" />
       <div class="err" id="visErr"></div>
-      <button class="primary" id="enterVisitor" data-i18n="enter_visitor">Entrer en visiteur</button>
+      <button class="primary" id="enterVisitor" data-i18n="enter_visitor">Entrer comme exposant</button>
     </div>
 
     <!-- staff pane -->
@@ -292,18 +310,37 @@
   </div>
 
   <!-- staff controls -->
-  <div class="row staffonly" style="margin-top:10px">
-    <button class="primary" id="addBtn" data-i18n="add_row">＋ Ajouter une rangée</button>
-  </div>
-  <div class="row staffonly" style="margin-top:8px">
-    <button class="ghost wide" id="reservationsBtn"><span data-i18n="reservations">Réservations</span> <span id="resBadge"></span></button>
-    <button class="ghost" id="exportBtn" data-i18n="export">Exporter</button>
-    <button class="ghost adminonly" id="clearBtn" data-i18n="clear">Vider</button>
+  <div class="staffonly staffmain">
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="addBtn" data-i18n="add_row">＋ Ajouter une rangée</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost wide" id="selectBtn" data-i18n="select_move">✥ Sélectionner / déplacer</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost wide" id="reservationsBtn"><span data-i18n="reservations">Réservations</span> <span id="resBadge"></span></button>
+      <button class="ghost" id="exportBtn" data-i18n="export">Exporter</button>
+      <button class="ghost adminonly" id="clearBtn" data-i18n="clear">Vider</button>
+    </div>
   </div>
 
-  <!-- visitor hint -->
+  <!-- selection toolbar (staff) -->
+  <div class="staffonly" id="selBar">
+    <div class="row" style="margin-top:10px">
+      <div class="grow"><b id="selCount">0</b> <span data-i18n="selected">sélectionnés</span></div>
+      <button class="ghost" id="doneSel" data-i18n="done">Terminé</button>
+    </div>
+    <div class="selbtns">
+      <button class="ghost rotbtn" id="rotL" title="rotate left">⟲</button>
+      <button class="ghost rotbtn" id="rotR" title="rotate right">⟳</button>
+      <button class="ghost" id="dupBtn" data-i18n="duplicate">Dupliquer</button>
+      <button class="b-del" id="delSelBtn" data-i18n="del">Supprimer</button>
+    </div>
+  </div>
+
+  <!-- exposant hint -->
   <div class="row" id="userHint" style="margin-top:10px">
-    <button class="primary" id="reserveCta" data-i18n="user_cta">Choisir un emplacement à réserver</button>
+    <button class="primary" id="reserveCta" data-i18n="user_cta">Touchez un emplacement libre pour réserver</button>
   </div>
 </div>
 
@@ -375,14 +412,15 @@
 const I18N = {
   fr:{
     app_name:"Brocante", app_tag:"Plan des emplacements & réservations",
-    tab_visitor:"Visiteur", tab_staff:"Équipe",
+    tab_visitor:"Exposant", tab_staff:"Équipe",
     your_name:"Votre nom", contact_opt:"Contact (téléphone ou e-mail) — optionnel",
-    enter_visitor:"Entrer en visiteur",
+    enter_visitor:"Entrer comme exposant",
     username:"Identifiant", password:"Mot de passe", sign_in:"Se connecter",
     demo_accounts:"Comptes de démonstration",
-    role_admin:"Administrateur", role_moderator:"Modérateur", role_user:"Visiteur",
+    role_admin:"Administrateur", role_moderator:"Modérateur", role_user:"Exposant",
     s_stalls:"emplacements", s_free:"libres", s_pending:"à valider", s_confirmed:"confirmés",
     add_row:"＋ Ajouter une rangée", reservations:"Réservations", export:"Exporter", clear:"Vider",
+    select_move:"✥ Sélectionner / déplacer", selected:"sélectionnés", done:"Terminé", duplicate:"Dupliquer",
     user_cta:"Touchez un emplacement libre pour réserver",
     lg_free:"Libre", lg_pending:"En attente", lg_confirmed:"Confirmé", lg_blocked:"Bloqué",
     place_title:"Placer des emplacements",
@@ -390,7 +428,7 @@ const I18N = {
     p_gap:"Espace entre", p_offset:"Décalage de l'axe", p_offset_h:"demi-largeur de rue",
     p_sides:"Côtés", side_left:"Gauche", side_right:"Droite",
     cancel:"Annuler", place_btn:"Placer", close:"Fermer", save:"Enregistrer",
-    res_sub:"Validez ou refusez les demandes des visiteurs.",
+    res_sub:"Validez ou refusez les demandes des exposants.",
     // statuses
     st_free:"Libre", st_pending:"En attente", st_confirmed:"Confirmé", st_blocked:"Bloqué",
     // stall sheet
@@ -410,6 +448,8 @@ const I18N = {
     tap_first:"Touchez le <b>premier croisement</b> (début de la rue)",
     tap_second:"Touchez le <b>croisement suivant</b> (fin de la rue)",
     tap_browse:"Touchez un emplacement <b>libre</b> pour le réserver",
+    sel_hint:"Touchez des emplacements · glissez ✥ pour déplacer, ⟳ pour pivoter",
+    nothing_selected:"Aucun emplacement sélectionné", dup_ok:"Emplacements dupliqués",
     seg_too_short:"Segment trop court", placed:"emplacements placés",
     saved:"Enregistré", deleted:"Supprimé", reserved_ok:"Réservation envoyée",
     res_cancelled:"Réservation annulée", validated:"Réservation validée", rejected:"Réservation refusée",
@@ -422,14 +462,15 @@ const I18N = {
   },
   en:{
     app_name:"Flea Market", app_tag:"Stall layout & reservations",
-    tab_visitor:"Visitor", tab_staff:"Staff",
+    tab_visitor:"Exhibitor", tab_staff:"Staff",
     your_name:"Your name", contact_opt:"Contact (phone or email) — optional",
-    enter_visitor:"Enter as visitor",
+    enter_visitor:"Enter as exhibitor",
     username:"Username", password:"Password", sign_in:"Sign in",
     demo_accounts:"Demo accounts",
-    role_admin:"Administrator", role_moderator:"Moderator", role_user:"Visitor",
+    role_admin:"Administrator", role_moderator:"Moderator", role_user:"Exhibitor",
     s_stalls:"stalls", s_free:"free", s_pending:"to validate", s_confirmed:"confirmed",
     add_row:"＋ Add a row", reservations:"Reservations", export:"Export", clear:"Clear",
+    select_move:"✥ Select / move", selected:"selected", done:"Done", duplicate:"Duplicate",
     user_cta:"Tap a free stall to reserve",
     lg_free:"Free", lg_pending:"Pending", lg_confirmed:"Confirmed", lg_blocked:"Blocked",
     place_title:"Place stalls",
@@ -437,7 +478,7 @@ const I18N = {
     p_gap:"Gap between", p_offset:"Offset from centre", p_offset_h:"half street width",
     p_sides:"Sides", side_left:"Left", side_right:"Right",
     cancel:"Cancel", place_btn:"Place", close:"Close", save:"Save",
-    res_sub:"Validate or reject visitor requests.",
+    res_sub:"Validate or reject exhibitor requests.",
     st_free:"Free", st_pending:"Pending", st_confirmed:"Confirmed", st_blocked:"Blocked",
     stall:"Stall", size:"Size", side_l:"left side", side_r:"right side",
     reserve:"Reserve this stall", reserve_for:"Reserve on behalf of",
@@ -454,6 +495,8 @@ const I18N = {
     tap_first:"Tap the <b>first intersection</b> (start of street)",
     tap_second:"Tap the <b>next intersection</b> (end of street)",
     tap_browse:"Tap a <b>free</b> stall to reserve it",
+    sel_hint:"Tap stalls · drag ✥ to move, ⟳ to rotate",
+    nothing_selected:"No stalls selected", dup_ok:"Stalls duplicated",
     seg_too_short:"Segment too short", placed:"stalls placed",
     saved:"Saved", deleted:"Deleted", reserved_ok:"Reservation sent",
     res_cancelled:"Reservation cancelled", validated:"Reservation validated", rejected:"Reservation rejected",
@@ -540,6 +583,7 @@ function refreshStatus(){
   if(!USER){return;}
   if(mode==='pickA'){ setStatus(t('tap_first')); }
   else if(mode==='pickB'){ setStatus(t('tap_second')); }
+  else if(selecting){ setStatus(t('sel_hint')); }
   else if(isStaff()){ setStatus(t('tap_add')); }
   else { setStatus(t('tap_browse')); }
 }
@@ -553,7 +597,7 @@ const DEMO_CENTER=[48.85648, 2.35222];
 
 function initMap(){
   map=L.map('map',{zoomControl:false,tap:true}).setView(DEMO_CENTER,19);
-  L.control.zoom({position:'bottomright'}).addTo(map);
+  L.control.zoom({position:'topright'}).addTo(map);
   osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:22,maxNativeZoom:19,attribution:'© OpenStreetMap'});
   sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:22,maxNativeZoom:19,attribution:'© Esri'});
   osm.addTo(map);
@@ -606,16 +650,23 @@ function buildStalls(A,B,p,sides,rowId){
 const layers=new Map(); // id -> L.polygon
 const STATUS_COLOR={free:'#74905a',pending:'#e8a33d',confirmed:'#5aa0c4',blocked:'#6b6860'};
 function styleFor(s){
-  return {color:'#000', weight:1, fillColor:STATUS_COLOR[s.status], fillOpacity:.6,
+  const base={color:'#000', weight:1, fillColor:STATUS_COLOR[s.status], fillOpacity:.6,
           dashArray: s.status==='blocked'?'2,4':null};
+  if(SEL.has(s.id)){ base.color='#fff'; base.weight=3; base.fillOpacity=.82; }
+  return base;
+}
+function onStallClick(id){
+  if(isStaff() && selecting) toggleSelect(id);
+  else openStall(id);
 }
 function renderStall(s){
   let poly=layers.get(s.id);
   if(!poly){
     poly=L.polygon(s.coords, styleFor(s)).addTo(map);
-    poly.on('click',()=>openStall(s.id));
+    poly.on('click',()=>onStallClick(s.id));
     layers.set(s.id,poly);
   } else {
+    poly.setLatLngs(s.coords);
     poly.setStyle(styleFor(s));
   }
   // tooltip: vendor name or reserved name
@@ -641,13 +692,110 @@ function refreshCounts(){
 }
 
 /* =====================================================================
+   SELECTION + TRANSFORM (staff): multi-select, move, rotate, duplicate, delete
+   ===================================================================== */
+const SEL=new Set();
+let selecting=false;
+const moveIcon=L.divIcon({className:'giz giz-move',html:'✥',iconSize:[34,34],iconAnchor:[17,17]});
+const rotIcon =L.divIcon({className:'giz giz-rot', html:'⟳',iconSize:[30,30],iconAnchor:[15,15]});
+let moveHandle=null,rotateHandle=null,gizLine=null;
+let snap=null,dragRefLL=null,gizRotStart=null,rotCentroid=null,rotStart=0;
+
+function enterSelect(){
+  if(mode!=='idle') cancelPick();
+  selecting=true; document.body.classList.add('selecting');
+  document.getElementById('selectBtn').classList.add('armed');
+  refreshStatus(); updateSelUI(); buildGizmo();
+}
+function exitSelect(){
+  selecting=false; document.body.classList.remove('selecting');
+  document.getElementById('selectBtn').classList.remove('armed');
+  clearSelection(); clearGizmo(); refreshStatus();
+}
+function clearSelection(){ const ids=[...SEL]; SEL.clear(); ids.forEach(id=>{const s=DB.get(id); if(s)renderStall(s);}); updateSelUI(); }
+function toggleSelect(id){
+  if(SEL.has(id)) SEL.delete(id); else SEL.add(id);
+  const s=DB.get(id); if(s)renderStall(s);
+  updateSelUI(); buildGizmo();
+}
+function updateSelUI(){ const el=document.getElementById('selCount'); if(el) el.textContent=SEL.size; }
+
+function selCentroid(){
+  let lat=0,lng=0,k=0;
+  SEL.forEach(id=>{const s=DB.get(id); if(s)s.coords.forEach(c=>{lat+=c[0];lng+=c[1];k++;});});
+  return k?L.latLng(lat/k,lng/k):map.getCenter();
+}
+function selRadius(c){ const f=frame(c); let r=4;
+  SEL.forEach(id=>{const s=DB.get(id); if(s)s.coords.forEach(co=>{const xy=f.toXY(L.latLng(co[0],co[1]));r=Math.max(r,Math.hypot(xy.x,xy.y));});});
+  return r+5;
+}
+function angOf(ll,c){ const f=frame(c); const xy=f.toXY(ll); return Math.atan2(xy.y,xy.x); }
+function snapshot(){ const m={}; SEL.forEach(id=>{const s=DB.get(id); if(s)m[id]=s.coords.map(c=>c.slice());}); return m; }
+function applyTranslate(sn,dlat,dlng){ SEL.forEach(id=>{const s=DB.get(id); if(s&&sn[id]){ s.coords=sn[id].map(c=>[c[0]+dlat,c[1]+dlng]); renderStall(s);} }); }
+function applyRotate(sn,c,ang){ const f=frame(c),cs=Math.cos(ang),si=Math.sin(ang);
+  SEL.forEach(id=>{const s=DB.get(id); if(s&&sn[id]){ s.coords=sn[id].map(co=>{const xy=f.toXY(L.latLng(co[0],co[1]));const rx=xy.x*cs-xy.y*si,ry=xy.x*si+xy.y*cs;const ll=f.toLL({x:rx,y:ry});return [ll.lat,ll.lng];}); renderStall(s);} });
+}
+function persistSel(){ SEL.forEach(id=>{const s=DB.get(id); if(s)DB.put(s);}); refreshCounts(); }
+
+function clearGizmo(){ [moveHandle,rotateHandle,gizLine].forEach(x=>x&&map.removeLayer(x)); moveHandle=rotateHandle=gizLine=null; }
+function buildGizmo(){
+  clearGizmo();
+  if(!selecting || !SEL.size) return;
+  const c=selCentroid(), f=frame(c), r=selRadius(c), rot=f.toLL({x:0,y:r});
+  gizLine=L.polyline([c,rot],{color:'#fff',weight:1,dashArray:'3,4',opacity:.85,interactive:false}).addTo(map);
+  moveHandle=L.marker(c,{draggable:true,icon:moveIcon,zIndexOffset:1000}).addTo(map);
+  rotateHandle=L.marker(rot,{draggable:true,icon:rotIcon,zIndexOffset:1000}).addTo(map);
+
+  moveHandle.on('dragstart',()=>{ snap=snapshot(); dragRefLL=moveHandle.getLatLng(); gizRotStart=rotateHandle.getLatLng(); });
+  moveHandle.on('drag',()=>{
+    const now=moveHandle.getLatLng(), dlat=now.lat-dragRefLL.lat, dlng=now.lng-dragRefLL.lng;
+    applyTranslate(snap,dlat,dlng);
+    const nr=L.latLng(gizRotStart.lat+dlat, gizRotStart.lng+dlng);
+    rotateHandle.setLatLng(nr); gizLine.setLatLngs([now,nr]);
+  });
+  moveHandle.on('dragend',()=>{ persistSel(); snap=null; buildGizmo(); });
+
+  rotateHandle.on('dragstart',()=>{ snap=snapshot(); rotCentroid=selCentroid(); rotStart=angOf(rotateHandle.getLatLng(),rotCentroid); });
+  rotateHandle.on('drag',()=>{
+    const a=angOf(rotateHandle.getLatLng(),rotCentroid);
+    applyRotate(snap,rotCentroid,a-rotStart);
+    gizLine.setLatLngs([rotCentroid,rotateHandle.getLatLng()]);
+  });
+  rotateHandle.on('dragend',()=>{ persistSel(); snap=null; buildGizmo(); });
+}
+
+function rotateStep(deg){
+  if(!SEL.size){toast(t('nothing_selected'));return;}
+  applyRotate(snapshot(), selCentroid(), deg*Math.PI/180); persistSel(); buildGizmo();
+}
+function duplicateSel(){
+  if(!SEL.size){toast(t('nothing_selected'));return;}
+  const dupRow='dup'+Date.now().toString(36), base=DB.all().length, newIds=[]; let i=0;
+  [...SEL].forEach(id=>{
+    const s=DB.get(id); if(!s)return; i++;
+    const newCoords=s.coords.map(co=>{const f=frame(L.latLng(co[0],co[1]));const ll=f.toLL({x:4,y:-4});return [ll.lat,ll.lng];});
+    const ns=Object.assign({},s,{id:'S-'+dupRow+'-'+i, n:base+i, coords:newCoords, status:'free', res:null, label:''});
+    ns.size=s.size?{len:s.size.len,depth:s.size.depth}:null;
+    DB.put(ns); renderStall(ns); newIds.push(ns.id);
+  });
+  clearSelection();
+  newIds.forEach(id=>{ SEL.add(id); renderStall(DB.get(id)); });
+  updateSelUI(); buildGizmo(); refreshCounts(); toast(t('dup_ok'));
+}
+function deleteSel(){
+  if(!SEL.size){toast(t('nothing_selected'));return;}
+  [...SEL].forEach(id=>{ DB.remove(id); const p=layers.get(id); if(p){map.removeLayer(p);layers.delete(id);} });
+  SEL.clear(); clearGizmo(); updateSelUI(); refreshCounts(); toast(t('deleted'));
+}
+
+/* =====================================================================
    STAFF — create rows
    ===================================================================== */
 let mode='idle', A=null,B=null,tempLine=null,tempMarks=[];
 const params={len:3.0,depth:1.5,gap:0.0,offset:3.5};
 let sidesSel={left:true,right:true};
 
-function startPick(){ mode='pickA'; addBtn.textContent='✕ '+t('cancel'); addBtn.classList.add('armed'); refreshStatus(); }
+function startPick(){ if(selecting) exitSelect(); mode='pickA'; addBtn.textContent='✕ '+t('cancel'); addBtn.classList.add('armed'); refreshStatus(); }
 function cancelPick(){
   mode='idle'; A=B=null;
   if(tempLine){map.removeLayer(tempLine);tempLine=null;}
@@ -930,10 +1078,19 @@ function wireApp(){
     b.onclick=()=>{ LANG=b.dataset.lang; Safe.set('brocante.lang',LANG); applyI18n(); applyRole(); };
   });
 
-  $('#logoutBtn').onclick=()=>{ USER=null; saveSession(); cancelPick(); showAuth(); };
+  $('#logoutBtn').onclick=()=>{ if(selecting)exitSelect(); USER=null; saveSession(); cancelPick(); showAuth(); };
 
   // staff create
   addBtn.onclick=()=>{ if(mode==='idle') startPick(); else cancelPick(); };
+
+  // selection / transform
+  $('#selectBtn').onclick=()=>{ selecting?exitSelect():enterSelect(); };
+  $('#doneSel').onclick=exitSelect;
+  $('#dupBtn').onclick=duplicateSel;
+  $('#delSelBtn').onclick=deleteSel;
+  $('#rotL').onclick=()=>rotateStep(-15);
+  $('#rotR').onclick=()=>rotateStep(15);
+
   // steppers
   document.querySelectorAll('.stepper button').forEach(b=>{
     b.onclick=()=>{ const key=b.parentElement.dataset.key;
