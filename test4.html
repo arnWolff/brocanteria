@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tiny Crypto</title>
+
+<!-- Static libraries only. Text leaves this device only when you tap Post to issue. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.7/purify.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<style>
+  :root{
+    --bg:#f6f8fa; --panel:#ffffff; --line:#d0d7de; --ink:#1f2328; --muted:#656d76;
+    --blue:#0969da; --green:#1a7f37; --red:#cf222e; --amber:#9a6700;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    max-width:760px;margin:0 auto;padding:16px 16px 64px;background:var(--bg);color:var(--ink);
+    font-size:15px;line-height:1.5;
+  }
+  h2{margin:4px 0 2px;font-size:20px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+  fieldset{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:14px;margin:0 0 16px}
+  legend{font-size:13px;font-weight:600;color:var(--muted);padding:0 6px}
+  label.small{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  textarea,input[type=password],input[type=text],select{
+    width:100%;padding:10px;font-size:16px;border:1px solid var(--line);border-radius:6px;
+    background:#fff;color:var(--ink);font-family:inherit;
+  }
+  textarea{resize:vertical}
+  textarea.mono,input.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+  .row.tight{margin-top:6px}
+  button{
+    padding:9px 13px;font-size:14px;cursor:pointer;border:1px solid var(--line);
+    border-radius:6px;background:#f6f8fa;color:var(--ink);font-family:inherit;
+  }
+  button:hover{background:#eaeef2}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+  button.primary{background:var(--green);border-color:var(--green);color:#fff}
+  button.primary:hover{background:#166b2e}
+  button.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.blue:hover{background:#0757ba}
+  button.danger{color:var(--red)}
+  button.link{background:none;border:none;color:var(--blue);padding:4px 0}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:12px}
+  .check input{width:18px;height:18px;flex:0 0 auto}
+  .note{font-size:12px;color:var(--muted);margin:8px 0 0}
+  .status{font-size:13px;margin:10px 0 0;min-height:1.2em}
+  .status.ok{color:var(--green)}
+  .status.bad{color:var(--red)}
+  .status.warn{color:var(--amber)}
+  .banner{border:1px solid #d4a72c;background:#fff8c5;border-radius:6px;padding:10px;font-size:13px;margin:0 0 14px}
+  .hidden{display:none !important}
+  .hint{border:1px dashed var(--line);border-radius:6px;padding:10px;font-size:13px;color:var(--muted)}
+
+  /* anonymization rules */
+  .rule{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fbfcfd}
+  .rule .r-find{margin-bottom:6px}
+  .rule-b{display:flex;gap:6px;align-items:center}
+  .rule-b input{flex:1;min-width:0}
+  .rule-b button{flex:0 0 auto}
+  .arrow{color:var(--muted);font-size:12px;display:block;margin:0 0 4px}
+
+  /* history */
+  .hist-head{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .hist-head input{flex:1}
+  .count{font-size:12px;color:var(--muted);margin:0 0 10px}
+  .card{border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:12px;overflow:hidden}
+  .card-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+    padding:8px 12px;background:#f6f8fa;border-bottom:1px solid var(--line)}
+  .card-title{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card-date{font-size:12px;color:var(--muted);white-space:nowrap}
+  .card .md,.card .edit-wrap{padding:12px}
+  .card-actions{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+  .clamp{max-height:300px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 75%,transparent)}
+  .more{padding:0 12px 8px}
+
+  /* gist-style markdown */
+  .md{word-wrap:break-word}
+  .md>*:first-child{margin-top:0}
+  .md>*:last-child{margin-bottom:0}
+  .md h1,.md h2{border-bottom:1px solid #d8dee4;padding-bottom:.25em}
+  .md h1{font-size:1.45em}.md h2{font-size:1.2em}.md h3{font-size:1.05em}
+  .md h1,.md h2,.md h3,.md h4{margin:20px 0 12px;line-height:1.3}
+  .md p,.md ul,.md ol,.md blockquote,.md table,.md pre{margin:0 0 14px}
+  .md ul,.md ol{padding-left:1.6em}
+  .md li+li{margin-top:.25em}
+  .md blockquote{border-left:3px solid var(--line);color:var(--muted);padding:0 1em;margin-left:0}
+  .md code{background:rgba(175,184,193,.2);padding:.2em .4em;border-radius:6px;font-size:85%;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .md pre{background:#f6f8fa;border:1px solid var(--line);padding:12px;border-radius:6px;overflow:auto}
+  .md pre code{background:none;padding:0;white-space:pre}
+  .md table{border-collapse:collapse;display:block;overflow:auto}
+  .md th,.md td{border:1px solid var(--line);padding:6px 12px}
+  .md tr:nth-child(2n){background:#f6f8fa}
+  .md img{max-width:100%}
+  .md a{color:var(--blue)}
+  .md hr{border:0;border-top:1px solid var(--line)}
+  .code-wrap{position:relative}
+  .code-copy{position:absolute;top:8px;right:8px;padding:3px 8px;font-size:12px;background:#fff;opacity:.9}
+
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2328;color:#fff;
+    padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+  #toast.show{opacity:1}
+  @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+
+<h2>Tiny Crypto</h2>
+<p class="sub">Anonymize, encrypt and keep markdown notes. Everything stays in this browser until you post to an issue.</p>
+
+<div id="storeWarn" class="banner hidden">
+  This page can't save to browser storage here, so history and settings will disappear when you close the tab.
+  Use the Export buttons to keep backups.
+</div>
+
+<fieldset>
+  <legend>Message</legend>
+  <label class="small" for="pwd">Password</label>
+  <input type="password" id="pwd" placeholder="Unlocks the saved list, history and token" autocomplete="off">
+
+  <label class="small" for="inputBox" style="margin-top:12px">Text, markdown, or an encrypted string</label>
+  <textarea id="inputBox" class="mono" rows="8" spellcheck="false"
+    placeholder="Write or paste markdown here. The preview updates as you type. Paste an encrypted string to decrypt it."></textarea>
+
+  <div class="row">
+    <button onclick="pasteIn()">Paste</button>
+    <button onclick="previewInput()">Preview</button>
+    <button class="blue" onclick="doEncrypt()">Compress &amp; encrypt</button>
+    <button class="blue" onclick="doDecrypt()">Decrypt &amp; decompress</button>
+    <button onclick="clearAll()">Clear</button>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Anonymization</legend>
+
+  <div id="ruleLock" class="hidden">
+    <p class="note" style="margin-top:0">Your replacement list is saved and locked. Type the password above and unlock it.</p>
+    <div class="row" style="margin-top:0"><button class="blue" onclick="unlockRules()">Unlock list</button></div>
+  </div>
+
+  <div id="ruleMain">
+    <div class="row" style="margin-top:0">
+      <button class="blue" onclick="anonymize()">Anonymize</button>
+      <button class="blue" onclick="deanonymize()">De-anonymize</button>
+    </div>
+    <p class="note">Both act on the editor box above and replace its contents.</p>
+    <p class="status" id="anonStatus"></p>
+
+    <div id="ruleList" style="margin-top:14px"></div>
+
+    <div class="row">
+      <button onclick="addRule()">Add rule</button>
+      <button class="primary" onclick="saveRules()">Save list</button>
+      <button onclick="exportRules()">Export</button>
+      <button onclick="document.getElementById('ruleFile').click()">Import</button>
+      <button class="danger" onclick="wipeRules()">Delete list</button>
+      <input type="file" id="ruleFile" accept=".json,.txt" class="hidden" onchange="importRules(this)">
+    </div>
+
+    <label class="check">
+      <input type="checkbox" id="anonCase" onchange="saveRules(true)">
+      Match regardless of capitalisation
+    </label>
+    <label class="check">
+      <input type="checkbox" id="anonWord" onchange="saveRules(true)">
+      Match whole words only
+    </label>
+
+    <p class="note">
+      The list is always stored encrypted with the password above, because it maps every placeholder back
+      to the real value. Lose the list and anonymized text can no longer be reversed — export a backup.
+      Replacement is literal: it will not catch inflections, typos, or values you have not listed, so read
+      the result before sharing it.
+    </p>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Result</legend>
+  <textarea id="outputBox" class="mono" rows="5" spellcheck="false" placeholder="Encrypted or decrypted text appears here..." readonly></textarea>
+  <div class="row">
+    <button onclick="copyOut()">Copy result</button>
+    <button class="primary" onclick="saveCurrent()">Save to history</button>
+    <button onclick="postToGithub()">Post to issue</button>
+    <button onclick="togglePreview()" id="previewBtn">Hide preview</button>
+  </div>
+  <div id="previewWrap" style="margin-top:14px">
+    <label class="small">Preview</label>
+    <div id="preview" class="md" style="border:1px solid var(--line);border-radius:6px;padding:12px;background:#fff;min-height:60px"></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>GitHub issue</legend>
+  <label class="small" for="ghUrl">Issue link</label>
+  <input type="text" id="ghUrl" placeholder="https://github.com/owner/repo/issues/12" autocomplete="off" spellcheck="false">
+
+  <label class="small" for="ghToken" style="margin-top:12px">Personal access token</label>
+  <input type="password" id="ghToken" placeholder="github_pat_… or ghp_…" autocomplete="off">
+
+  <div class="row">
+    <button class="blue" onclick="postToGithub()">Post comment</button>
+    <button onclick="saveGh()">Save settings</button>
+    <button id="ghUnlockBtn" class="hidden" onclick="unlockToken()">Unlock token</button>
+    <button class="danger" onclick="forgetGh()">Forget token</button>
+  </div>
+
+  <div class="row tight">
+    <select id="postSource" aria-label="What to post">
+      <option value="result">Post the result box</option>
+      <option value="editor">Post the editor text</option>
+    </select>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" id="ghRemember" onchange="saveGh(true)">
+    Remember the token on this device, encrypted with the password above
+  </label>
+  <label class="check">
+    <input type="checkbox" id="ghWrap" checked>
+    Wrap encrypted text in a code block so GitHub keeps it intact
+  </label>
+
+  <p class="status" id="ghStatus"></p>
+  <p class="note">
+    Use a fine-grained token limited to one repository with Issues: read and write. Posting is the only
+    moment text leaves this device. Before sending, the page checks the text against your replacement list
+    and warns if a real value is still in it. Note that browser storage is shared by every page on the same
+    domain, so on a personal GitHub Pages site other projects you publish there could read it.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>History</legend>
+
+  <div id="lockPanel" class="hidden">
+    <p class="note" style="margin-top:0">Your saved history is locked. Type the password above and unlock it.</p>
+    <div class="row" style="margin-top:0"><button class="blue" onclick="unlockHistory()">Unlock history</button></div>
+  </div>
+
+  <div id="histMain">
+    <div class="hist-head">
+      <input type="text" id="search" placeholder="Search saved messages" oninput="renderList()">
+    </div>
+    <p class="count" id="count"></p>
+    <div id="list"></div>
+
+    <div class="row">
+      <button onclick="exportHistory()">Export</button>
+      <button onclick="document.getElementById('importFile').click()">Import</button>
+      <button class="danger" onclick="wipeHistory()">Delete all</button>
+      <input type="file" id="importFile" accept=".json,.txt" class="hidden" onchange="importHistory(this)">
+    </div>
+
+    <label class="check">
+      <input type="checkbox" id="lockAtRest" onchange="toggleLock()">
+      Lock saved history with the password above
+    </label>
+    <p class="note">
+      History lives only in this browser, on this device. Without the lock, saved messages are stored
+      as readable text, so anyone using this device unlocked can read them.
+    </p>
+  </div>
+</fieldset>
+
+<div id="toast"></div>
+
+<script>
+/* ---------- storage that degrades gracefully ---------- */
+var HKEY = 'tinycrypto.history.v1';
+var GKEY = 'tinycrypto.github.v1';
+var RKEY = 'tinycrypto.rules.v1';
+var Store = (function(){
+  var ok = true, mem = {};
+  try { localStorage.setItem('__tc','1'); localStorage.removeItem('__tc'); }
+  catch(e){ ok = false; }
+  return {
+    ok: ok,
+    get: function(k){ return ok ? localStorage.getItem(k) : (mem[k] || null); },
+    set: function(k, v){ if (ok) localStorage.setItem(k, v); else mem[k] = v; },
+    clear: function(k){ if (ok) localStorage.removeItem(k); else delete mem[k]; }
+  };
+})();
+
+var notes = [];
+var locked = false;        // history blob encrypted, not yet unlocked
+var tokenLocked = false;   // token stored encrypted, not yet unlocked
+var rulesLocked = false;   // rules stored encrypted, not yet unlocked
+var editingId = null;
+var lastPlain = '';
+
+var pwdEl = document.getElementById('pwd');
+var inputEl = document.getElementById('inputBox');
+var outputEl = document.getElementById('outputBox');
+var previewEl = document.getElementById('preview');
+var listEl = document.getElementById('list');
+var countEl = document.getElementById('count');
+var searchEl = document.getElementById('search');
+var lockChk = document.getElementById('lockAtRest');
+var ghUrlEl = document.getElementById('ghUrl');
+var ghTokenEl = document.getElementById('ghToken');
+var ghRememberEl = document.getElementById('ghRemember');
+var ghWrapEl = document.getElementById('ghWrap');
+var ghStatusEl = document.getElementById('ghStatus');
+var ghUnlockBtn = document.getElementById('ghUnlockBtn');
+var ruleListEl = document.getElementById('ruleList');
+var anonStatusEl = document.getElementById('anonStatus');
+var anonCaseEl = document.getElementById('anonCase');
+var anonWordEl = document.getElementById('anonWord');
+
+/* ---------- helpers ---------- */
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show';
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.className = ''; }, 1800);
+}
+function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+function escRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function fmt(ts){ try { return new Date(ts).toLocaleString(); } catch(e){ return ''; } }
+function titleOf(text){
+  var lines = (text || '').split('\n'), line = 'Untitled';
+  for (var i = 0; i < lines.length; i++){ if (lines[i].trim()){ line = lines[i]; break; } }
+  return line.replace(/^#{1,6}\s*/, '').replace(/[*_`>]/g, '').trim().slice(0, 70) || 'Untitled';
+}
+function newId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function looksEncrypted(s){
+  s = (s || '').trim();
+  return s.length > 24 && /^U2FsdGVkX1[A-Za-z0-9+/=\s]+$/.test(s);
+}
+function copyText(text){
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(function(){ legacyCopy(text); });
+  } else { legacyCopy(text); }
+}
+function legacyCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, 999999);
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
+}
+
+/* ---------- markdown ---------- */
+if (window.marked && marked.setOptions) marked.setOptions({ gfm:true, breaks:true, headerIds:false, mangle:false });
+
+function renderMd(md, el){
+  var html;
+  try {
+    if (window.marked) html = marked.parse ? marked.parse(md || '') : marked(md || '');
+    else html = '<pre>' + esc(md) + '</pre>';
+  } catch(e){ html = '<pre>' + esc(md) + '</pre>'; }
+  if (window.DOMPurify) html = DOMPurify.sanitize(html);
+  el.innerHTML = html;
+  var links = el.querySelectorAll('a');
+  for (var i = 0; i < links.length; i++){ links[i].target = '_blank'; links[i].rel = 'noopener noreferrer'; }
+  decorateCode(el);
+}
+
+function decorateCode(root){
+  var pres = root.querySelectorAll('pre');
+  for (var i = 0; i < pres.length; i++){
+    (function(pre){
+      if (pre.parentNode && pre.parentNode.className === 'code-wrap') return;
+      var wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(pre);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'code-copy'; btn.textContent = 'Copy';
+      btn.onclick = function(){
+        var code = pre.querySelector('code');
+        copyText(code ? code.innerText : pre.innerText);
+        btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1400);
+      };
+      wrap.appendChild(btn);
+      if (window.hljs){
+        var c = pre.querySelector('code');
+        if (c) { try { hljs.highlightElement(c); } catch(e){} }
+      }
+    })(pres[i]);
+  }
+}
+
+/* ---------- editor + preview ---------- */
+function showPreview(text){
+  lastPlain = text;
+  if (looksEncrypted(text)){
+    previewEl.innerHTML = '<div class="hint">This looks like an encrypted string. ' +
+      'Enter the password and tap Decrypt &amp; decompress to read it.</div>';
+    return;
+  }
+  renderMd(text, previewEl);
+}
+function previewInput(){
+  showPreview(inputEl.value);
+  document.getElementById('previewWrap').className = '';
+  document.getElementById('previewBtn').textContent = 'Hide preview';
+}
+var previewTimer = null;
+inputEl.addEventListener('input', function(){
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(function(){ showPreview(inputEl.value); }, 250);
+});
+
+function pasteIn(){
+  if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext){
+    navigator.clipboard.readText().then(function(text){
+      if (!text){ toast('Clipboard is empty'); return; }
+      inputEl.value = text; showPreview(text); toast('Pasted');
+    }).catch(function(){ manualPasteHint(); });
+  } else { manualPasteHint(); }
+}
+function manualPasteHint(){ inputEl.focus(); toast('Long-press the box and choose Paste'); }
+
+/* ---------- anonymization ---------- */
+function anonSay(msg, kind){
+  anonStatusEl.textContent = msg;
+  anonStatusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function ruleRow(find, repl){
+  var box = document.createElement('div'); box.className = 'rule';
+  var a = document.createElement('input');
+  a.type = 'text'; a.className = 'r-find mono'; a.spellcheck = false;
+  a.placeholder = 'Sensitive text, e.g. Acme Corp'; a.value = find || '';
+  var lbl = document.createElement('span'); lbl.className = 'arrow'; lbl.textContent = 'replaced by';
+  var b = document.createElement('div'); b.className = 'rule-b';
+  var c = document.createElement('input');
+  c.type = 'text'; c.className = 'r-repl mono'; c.spellcheck = false;
+  c.placeholder = '[[ORG_1]]'; c.value = repl || '';
+  var del = document.createElement('button');
+  del.type = 'button'; del.className = 'danger'; del.textContent = 'Remove';
+  del.onclick = function(){ box.parentNode.removeChild(box); };
+  b.appendChild(c); b.appendChild(del);
+  box.appendChild(a); box.appendChild(lbl); box.appendChild(b);
+  return box;
+}
+
+function renderRules(list){
+  ruleListEl.innerHTML = '';
+  (list || []).forEach(function(r){ ruleListEl.appendChild(ruleRow(r.find, r.repl)); });
+  if (!ruleListEl.children.length) addRule();
+}
+
+function addRule(){
+  var n = ruleListEl.children.length + 1;
+  ruleListEl.appendChild(ruleRow('', '[[TERM_' + n + ']]'));
+}
+
+function collectRules(){
+  var out = [], rows = ruleListEl.querySelectorAll('.rule');
+  for (var i = 0; i < rows.length; i++){
+    var f = rows[i].querySelector('.r-find').value;
+    var r = rows[i].querySelector('.r-repl').value;
+    if (f.trim() === '' && r.trim() === '') continue;
+    out.push({ find: f, repl: r });
+  }
+  return out;
+}
+
+function checkRules(list){
+  var seenFind = {}, seenRepl = {}, problems = [];
+  list.forEach(function(r){
+    if (!r.find.trim()){ problems.push('A rule has no sensitive text.'); return; }
+    if (!r.repl.trim()){ problems.push('"' + r.find + '" has no replacement, so it could not be reversed.'); return; }
+    if (r.find === r.repl){ problems.push('"' + r.find + '" replaces itself.'); return; }
+    if (seenFind[r.find]) problems.push('"' + r.find + '" is listed twice.');
+    if (seenRepl[r.repl]) problems.push('The placeholder "' + r.repl + '" is used by two different values, so reversing would be ambiguous.');
+    seenFind[r.find] = true; seenRepl[r.repl] = true;
+  });
+  return problems;
+}
+
+/* single pass over the text: each position is consumed once, longest match wins */
+function applyPairs(text, pairs, ignoreCase, wholeWord){
+  var valid = pairs.filter(function(p){ return p[0] !== ''; });
+  if (!valid.length) return { text: text, count: 0, per: {} };
+  valid.sort(function(a, b){ return b[0].length - a[0].length; });
+  var parts = valid.map(function(p){
+    var pat = escRe(p[0]);
+    if (wholeWord && /^[\w]/.test(p[0]) && /[\w]$/.test(p[0])) pat = '\\b' + pat + '\\b';
+    return pat;
+  });
+  var map = {};
+  valid.forEach(function(p){ map[ignoreCase ? p[0].toLowerCase() : p[0]] = p[1]; });
+  var re = new RegExp(parts.join('|'), 'g' + (ignoreCase ? 'i' : ''));
+  var count = 0, per = {};
+  var out = text.replace(re, function(m){
+    var key = ignoreCase ? m.toLowerCase() : m;
+    if (!(key in map)) return m;
+    count++; per[key] = (per[key] || 0) + 1;
+    return map[key];
+  });
+  return { text: out, count: count, per: per };
+}
+
+function activeRules(){
+  if (rulesLocked){ anonSay('Unlock the replacement list first.', 'bad'); return null; }
+  var list = collectRules();
+  var real = list.filter(function(r){ return r.find.trim() && r.repl.trim(); });
+  if (!real.length){ anonSay('Add at least one rule first.', 'bad'); return null; }
+  var problems = checkRules(real);
+  if (problems.length){ anonSay(problems[0], 'bad'); return null; }
+  return real;
+}
+
+function anonymize(){
+  var list = activeRules(); if (!list) return;
+  var text = inputEl.value;
+  if (!text){ anonSay('The editor is empty.', 'bad'); return; }
+
+  var already = list.filter(function(r){ return text.indexOf(r.repl) > -1; });
+  if (already.length && !confirm('The text already contains the placeholder "' + already[0].repl +
+      '". Reversing later may restore too much. Continue?')) return;
+
+  var pairs = list.map(function(r){ return [r.find, r.repl]; });
+  var res = applyPairs(text, pairs, anonCaseEl.checked, anonWordEl.checked);
+  inputEl.value = res.text;
+  showPreview(res.text);
+
+  var unmatched = list.filter(function(r){
+    var k = anonCaseEl.checked ? r.find.toLowerCase() : r.find;
+    return !res.per[k];
+  }).map(function(r){ return r.find; });
+  var msg = res.count + ' replacement' + (res.count === 1 ? '' : 's') + ' made.';
+  if (unmatched.length) msg += ' No match for: ' + unmatched.slice(0, 3).join(', ') +
+    (unmatched.length > 3 ? ' and ' + (unmatched.length - 3) + ' more' : '') + '.';
+  anonSay(msg, res.count ? 'ok' : 'warn');
+}
+
+function deanonymize(){
+  var list = activeRules(); if (!list) return;
+  var text = inputEl.value;
+  if (!text){ anonSay('The editor is empty.', 'bad'); return; }
+  var pairs = list.map(function(r){ return [r.repl, r.find]; });
+  var res = applyPairs(text, pairs, false, false);
+  inputEl.value = res.text;
+  showPreview(res.text);
+  anonSay(res.count + ' value' + (res.count === 1 ? '' : 's') + ' restored.', res.count ? 'ok' : 'warn');
+}
+
+/* returns the real values still present in a piece of text */
+function leaks(text){
+  if (rulesLocked || !text) return [];
+  return collectRules().filter(function(r){
+    if (!r.find.trim()) return false;
+    return anonCaseEl.checked
+      ? text.toLowerCase().indexOf(r.find.toLowerCase()) > -1
+      : text.indexOf(r.find) > -1;
+  }).map(function(r){ return r.find; });
+}
+
+function saveRules(silent){
+  var list = collectRules().filter(function(r){ return r.find.trim() || r.repl.trim(); });
+  var problems = checkRules(list.filter(function(r){ return r.find.trim() && r.repl.trim(); }));
+  if (problems.length && !silent){ anonSay(problems[0], 'bad'); return; }
+  if (!pwdEl.value){
+    if (!silent) anonSay('Set a password above first — the list is only ever stored encrypted.', 'bad');
+    return;
+  }
+  try {
+    var payload = { rules: list, ignoreCase: anonCaseEl.checked, wholeWord: anonWordEl.checked };
+    var packed = LZString.compressToBase64(JSON.stringify(payload));
+    Store.set(RKEY, JSON.stringify({ enc: true, data: CryptoJS.AES.encrypt(packed, pwdEl.value).toString() }));
+    if (!silent) anonSay(list.length + ' rule' + (list.length === 1 ? '' : 's') + ' saved, encrypted.', 'ok');
+  } catch(e){ anonSay('Could not save: ' + e.message, 'bad'); }
+}
+
+function loadRules(){
+  var raw = Store.get(RKEY);
+  if (!raw){ renderRules([]); return; }
+  rulesLocked = true;
+  document.getElementById('ruleLock').className = '';
+  document.getElementById('ruleMain').className = 'hidden';
+}
+
+function unlockRules(quiet){
+  if (!rulesLocked) return false;
+  var pwd = pwdEl.value;
+  if (!pwd){ if (!quiet) alert('Type the password above first.'); return false; }
+  try {
+    var obj = JSON.parse(Store.get(RKEY));
+    var packed = CryptoJS.AES.decrypt(obj.data, pwd).toString(CryptoJS.enc.Utf8);
+    if (!packed) throw new Error('x');
+    var payload = JSON.parse(LZString.decompressFromBase64(packed));
+    anonCaseEl.checked = !!payload.ignoreCase;
+    anonWordEl.checked = !!payload.wholeWord;
+    renderRules(payload.rules || []);
+    rulesLocked = false;
+    document.getElementById('ruleLock').className = 'hidden';
+    document.getElementById('ruleMain').className = '';
+    if (!quiet) anonSay('List unlocked.', 'ok');
+    return true;
+  } catch(e){
+    if (!quiet) alert('That password does not open the saved list.');
+    return false;
+  }
+}
+
+function wipeRules(){
+  if (!confirm('Delete the replacement list? Anonymized text you kept elsewhere could no longer be reversed.')) return;
+  Store.clear(RKEY);
+  rulesLocked = false;
+  document.getElementById('ruleLock').className = 'hidden';
+  document.getElementById('ruleMain').className = '';
+  renderRules([]);
+  anonSay('List deleted.', 'ok');
+}
+
+function exportRules(){
+  if (rulesLocked){ anonSay('Unlock the list first.', 'bad'); return; }
+  if (!pwdEl.value){ anonSay('Set a password — the backup is always encrypted.', 'bad'); return; }
+  var list = collectRules();
+  if (!list.length){ anonSay('Nothing to export.', 'warn'); return; }
+  var payload = { rules: list, ignoreCase: anonCaseEl.checked, wholeWord: anonWordEl.checked };
+  var packed = LZString.compressToBase64(JSON.stringify(payload));
+  var blob = new Blob([JSON.stringify({ kind:'rules', enc:true, data: CryptoJS.AES.encrypt(packed, pwdEl.value).toString() })],
+    { type:'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tiny-crypto-rules-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  anonSay('Backup downloaded, encrypted.', 'ok');
+}
+
+function importRules(fileInput){
+  var f = fileInput.files && fileInput.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try {
+      var obj = JSON.parse(reader.result);
+      if (!pwdEl.value) throw new Error('enter the backup password above first');
+      var packed = CryptoJS.AES.decrypt(obj.data, pwdEl.value).toString(CryptoJS.enc.Utf8);
+      if (!packed) throw new Error('wrong password');
+      var payload = JSON.parse(LZString.decompressFromBase64(packed));
+      if (!confirm('Replace the current list with ' + (payload.rules || []).length + ' imported rules?')) { fileInput.value=''; return; }
+      anonCaseEl.checked = !!payload.ignoreCase;
+      anonWordEl.checked = !!payload.wholeWord;
+      renderRules(payload.rules || []);
+      rulesLocked = false;
+      document.getElementById('ruleLock').className = 'hidden';
+      document.getElementById('ruleMain').className = '';
+      saveRules(true);
+      anonSay('List imported.', 'ok');
+    } catch(e){ anonSay('Could not read that file: ' + e.message, 'bad'); }
+    fileInput.value = '';
+  };
+  reader.readAsText(f);
+}
+
+/* ---------- encrypt / decrypt ---------- */
+function doEncrypt(){
+  var input = inputEl.value, pwd = pwdEl.value;
+  if (!pwd) { alert('Enter a password first.'); return; }
+  if (!input) { alert('Enter some text first.'); return; }
+  try {
+    var compressed = LZString.compressToBase64(input);
+    outputEl.value = CryptoJS.AES.encrypt(compressed, pwd).toString();
+    showPreview(input);
+    toast('Encrypted');
+  } catch(e){ alert('Could not encrypt: ' + e.message); outputEl.value = ''; }
+}
+
+function doDecrypt(){
+  var input = inputEl.value.trim(), pwd = pwdEl.value;
+  if (!pwd) { alert('Enter a password first.'); return; }
+  if (!input) { alert('Paste an encrypted string first.'); return; }
+  try {
+    var compressed = CryptoJS.AES.decrypt(input, pwd).toString(CryptoJS.enc.Utf8);
+    if (!compressed) throw new Error('wrong password or damaged string');
+    var plain = LZString.decompressFromBase64(compressed);
+    if (plain === null || plain === undefined || plain === '') throw new Error('wrong password or damaged string');
+    outputEl.value = plain;
+    showPreview(plain);
+    toast('Decrypted');
+  } catch(e){
+    alert('Could not decrypt: ' + e.message);
+    outputEl.value = ''; lastPlain = ''; previewEl.innerHTML = '';
+  }
+}
+
+function copyOut(){
+  if (!outputEl.value) { toast('Nothing to copy'); return; }
+  outputEl.select(); outputEl.setSelectionRange(0, 999999);
+  copyText(outputEl.value);
+  toast('Copied');
+}
+
+function clearAll(){
+  inputEl.value = ''; outputEl.value = ''; lastPlain = ''; previewEl.innerHTML = '';
+}
+
+function togglePreview(){
+  var w = document.getElementById('previewWrap'), b = document.getElementById('previewBtn');
+  var hide = w.className !== 'hidden';
+  w.className = hide ? 'hidden' : '';
+  b.textContent = hide ? 'Show preview' : 'Hide preview';
+}
+
+/* ---------- GitHub ---------- */
+function parseIssue(u){
+  u = (u || '').trim();
+  var m = u.match(/^https?:\/\/([^\/]+)\/([^\/\s]+)\/([^\/\s]+)\/issues\/(\d+)/i);
+  if (m){
+    var host = m[1].toLowerCase();
+    if (host === 'api.github.com'){
+      var a = u.match(/repos\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/i);
+      if (a) return { api:'https://api.github.com', owner:a[1], repo:a[2], num:a[3] };
+      return null;
+    }
+    return {
+      api: (host === 'github.com' || host === 'www.github.com') ? 'https://api.github.com' : 'https://' + m[1] + '/api/v3',
+      owner: m[2], repo: m[3], num: m[4]
+    };
+  }
+  m = u.match(/^([\w.-]+)\/([\w.-]+)#(\d+)$/);
+  if (m) return { api:'https://api.github.com', owner:m[1], repo:m[2], num:m[3] };
+  return null;
+}
+
+function ghSay(msg, kind){
+  ghStatusEl.textContent = msg;
+  ghStatusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function postToGithub(){
+  var target = parseIssue(ghUrlEl.value);
+  if (!target){ ghSay('That issue link is not readable. Use https://github.com/owner/repo/issues/12', 'bad'); return; }
+  var token = ghTokenEl.value.trim();
+  if (!token){ ghSay('Add a personal access token first.', 'bad'); return; }
+
+  var source = document.getElementById('postSource').value;
+  var text = source === 'editor' ? inputEl.value : outputEl.value;
+  if (!text || !text.trim()){
+    ghSay(source === 'editor' ? 'The editor is empty.' : 'The result box is empty. Encrypt, decrypt, or switch to posting the editor text.', 'bad');
+    return;
+  }
+
+  var found = leaks(looksEncrypted(text) ? lastPlain : text);
+  if (found.length){
+    if (!confirm('This still contains ' + found.length + ' value' + (found.length === 1 ? '' : 's') +
+      ' from your replacement list, starting with "' + found[0] + '". Post anyway?')) {
+      ghSay('Cancelled. Run Anonymize first.', 'warn'); return;
+    }
+  }
+
+  if (ghWrapEl.checked && looksEncrypted(text)){
+    var fence = '```';
+    text = fence + '\n' + text.trim() + '\n' + fence;
+  }
+
+  var url = target.api + '/repos/' + target.owner + '/' + target.repo + '/issues/' + target.num + '/comments';
+  ghSay('Posting to ' + target.owner + '/' + target.repo + ' #' + target.num + '…');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', url, true);
+  xhr.setRequestHeader('Accept', 'application/vnd.github+json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+  xhr.setRequestHeader('X-GitHub-Api-Version', '2022-11-28');
+  xhr.onload = function(){
+    if (xhr.status === 201){
+      var link = '';
+      try { link = JSON.parse(xhr.responseText).html_url || ''; } catch(e){}
+      ghSay('Comment posted.', 'ok');
+      if (link){
+        ghStatusEl.appendChild(document.createTextNode(' '));
+        var a = document.createElement('a');
+        a.href = link; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Open it';
+        ghStatusEl.appendChild(a);
+      }
+      toast('Posted to GitHub');
+    } else {
+      var detail = '';
+      try { detail = JSON.parse(xhr.responseText).message || ''; } catch(e){}
+      var msg;
+      if (xhr.status === 401) msg = 'GitHub rejected the token. It may be wrong or expired.';
+      else if (xhr.status === 403) msg = 'GitHub refused. The token needs Issues: read and write on this repository.';
+      else if (xhr.status === 404) msg = 'Not found. Either the link is wrong, or this token cannot see that private repository.';
+      else if (xhr.status === 410) msg = 'That issue is locked or the repository has issues turned off.';
+      else msg = 'GitHub answered ' + xhr.status + '.';
+      ghSay(msg + (detail ? ' (' + detail + ')' : ''), 'bad');
+    }
+  };
+  xhr.onerror = function(){
+    ghSay('The request never reached GitHub. Opening this page as a local file blocks it — serve it over https, or check the connection.', 'bad');
+  };
+  try { xhr.send(JSON.stringify({ body: text })); }
+  catch(e){ ghSay('Could not send: ' + e.message, 'bad'); }
+}
+
+function saveGh(silent){
+  var data = { url: ghUrlEl.value.trim(), wrap: ghWrapEl.checked };
+  if (ghRememberEl.checked){
+    var token = ghTokenEl.value.trim();
+    if (!pwdEl.value){
+      ghRememberEl.checked = false;
+      ghSay('Set a password above before storing the token.', 'bad');
+      return;
+    }
+    if (token) data.tokenEnc = CryptoJS.AES.encrypt(token, pwdEl.value).toString();
+  }
+  try {
+    Store.set(GKEY, JSON.stringify(data));
+    if (!silent) ghSay(ghRememberEl.checked ? 'Saved. The token is stored encrypted on this device.' : 'Saved. The token is not stored.', 'ok');
+  } catch(e){ ghSay('Could not save: ' + e.message, 'bad'); }
+}
+
+function loadGh(){
+  var raw = Store.get(GKEY);
+  if (!raw) return;
+  var d;
+  try { d = JSON.parse(raw); } catch(e){ return; }
+  ghUrlEl.value = d.url || '';
+  if (typeof d.wrap === 'boolean') ghWrapEl.checked = d.wrap;
+  if (d.tokenEnc){
+    tokenLocked = true;
+    ghRememberEl.checked = true;
+    ghUnlockBtn.className = '';
+    ghSay('A token is stored, locked. Type the password above and unlock it.');
+  }
+}
+
+function unlockToken(quiet){
+  if (!tokenLocked) return false;
+  var pwd = pwdEl.value;
+  if (!pwd){ if (!quiet) ghSay('Type the password above first.', 'bad'); return false; }
+  try {
+    var d = JSON.parse(Store.get(GKEY));
+    var token = CryptoJS.AES.decrypt(d.tokenEnc, pwd).toString(CryptoJS.enc.Utf8);
+    if (!token) throw new Error('x');
+    ghTokenEl.value = token;
+    tokenLocked = false;
+    ghUnlockBtn.className = 'hidden';
+    ghSay('Token unlocked.', 'ok');
+    return true;
+  } catch(e){
+    if (!quiet) ghSay('That password does not open the stored token.', 'bad');
+    return false;
+  }
+}
+
+function forgetGh(){
+  if (!confirm('Remove the stored token from this device?')) return;
+  var d = {};
+  try { d = JSON.parse(Store.get(GKEY)) || {}; } catch(e){}
+  Store.set(GKEY, JSON.stringify({ url: d.url || ghUrlEl.value.trim(), wrap: ghWrapEl.checked }));
+  ghTokenEl.value = '';
+  tokenLocked = false;
+  ghRememberEl.checked = false;
+  ghUnlockBtn.className = 'hidden';
+  ghSay('Token removed from this device.', 'ok');
+}
+
+/* ---------- history ---------- */
+function loadHistory(){
+  var raw = Store.get(HKEY);
+  if (!raw){ notes = []; renderList(); return; }
+  var obj;
+  try { obj = JSON.parse(raw); } catch(e){ notes = []; renderList(); return; }
+  if (obj && obj.enc){
+    locked = true; lockChk.checked = true;
+    document.getElementById('lockPanel').className = '';
+    document.getElementById('histMain').className = 'hidden';
+  } else {
+    notes = (obj && obj.items) || []; lockChk.checked = false;
+    renderList();
+  }
+}
+
+function unlockHistory(){
+  var pwd = pwdEl.value;
+  if (!pwd) { alert('Type the password above first.'); return; }
+  try {
+    var obj = JSON.parse(Store.get(HKEY));
+    var packed = CryptoJS.AES.decrypt(obj.data, pwd).toString(CryptoJS.enc.Utf8);
+    if (!packed) throw new Error('x');
+    notes = JSON.parse(LZString.decompressFromBase64(packed));
+    locked = false;
+    document.getElementById('lockPanel').className = 'hidden';
+    document.getElementById('histMain').className = '';
+    renderList();
+    toast('History unlocked');
+  } catch(e){ alert('That password does not open the saved history.'); }
+}
+
+function persist(){
+  try {
+    if (lockChk.checked){
+      var pwd = pwdEl.value;
+      if (!pwd){ alert('The history is locked, so a password is needed to save.'); return false; }
+      var packed = LZString.compressToBase64(JSON.stringify(notes));
+      Store.set(HKEY, JSON.stringify({ enc:true, data: CryptoJS.AES.encrypt(packed, pwd).toString() }));
+    } else {
+      Store.set(HKEY, JSON.stringify({ enc:false, items: notes }));
+    }
+    return true;
+  } catch(e){ alert('Could not save: ' + e.message); return false; }
+}
+
+function saveCurrent(){
+  var text = outputEl.value || lastPlain || inputEl.value;
+  if (!text || !text.trim()){ toast('Nothing to save'); return; }
+  if (looksEncrypted(text) && lastPlain && !looksEncrypted(lastPlain)) text = lastPlain;
+  if (locked){ alert('Unlock the history first.'); return; }
+  var now = Date.now();
+  notes.unshift({ id:newId(), title:titleOf(text), body:text, created:now, updated:now });
+  if (persist()){ renderList(); toast('Saved'); }
+}
+
+function toggleLock(){
+  if (lockChk.checked && !pwdEl.value){
+    lockChk.checked = false;
+    alert('Enter a password above before locking the history.');
+    return;
+  }
+  if (persist()) toast(lockChk.checked ? 'History locked' : 'History unlocked');
+}
+
+function wipeHistory(){
+  if (!confirm('Delete every saved message? This cannot be undone.')) return;
+  notes = []; Store.clear(HKEY); locked = false; lockChk.checked = false;
+  document.getElementById('lockPanel').className = 'hidden';
+  document.getElementById('histMain').className = '';
+  renderList(); toast('History deleted');
+}
+
+function exportHistory(){
+  if (locked){ alert('Unlock the history first.'); return; }
+  if (!notes.length){ toast('Nothing to export'); return; }
+  var payload;
+  if (lockChk.checked){
+    if (!pwdEl.value){ alert('Enter the password to export the locked history.'); return; }
+    var packed = LZString.compressToBase64(JSON.stringify(notes));
+    payload = JSON.stringify({ enc:true, data: CryptoJS.AES.encrypt(packed, pwdEl.value).toString() });
+  } else {
+    payload = JSON.stringify({ enc:false, items: notes }, null, 2);
+  }
+  var blob = new Blob([payload], { type:'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tiny-crypto-history-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+}
+
+function importHistory(fileInput){
+  var f = fileInput.files && fileInput.files[0];
+  if (!f) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try {
+      var obj = JSON.parse(reader.result), incoming;
+      if (obj.enc){
+        if (!pwdEl.value){ alert('This backup is encrypted. Enter its password above, then import again.'); fileInput.value=''; return; }
+        var packed = CryptoJS.AES.decrypt(obj.data, pwdEl.value).toString(CryptoJS.enc.Utf8);
+        if (!packed) throw new Error('wrong password');
+        incoming = JSON.parse(LZString.decompressFromBase64(packed));
+      } else { incoming = obj.items || []; }
+      var have = {};
+      notes.forEach(function(n){ have[n.id] = true; });
+      var added = 0;
+      incoming.forEach(function(n){
+        if (!n || !n.body || have[n.id]) return;
+        notes.push({ id:n.id || newId(), title:n.title || titleOf(n.body), body:n.body,
+                     created:n.created || Date.now(), updated:n.updated || n.created || Date.now() });
+        added++;
+      });
+      notes.sort(function(a,b){ return (b.updated||0) - (a.updated||0); });
+      if (persist()){ renderList(); toast(added + ' message(s) imported'); }
+    } catch(e){ alert('Could not read that file: ' + e.message); }
+    fileInput.value = '';
+  };
+  reader.readAsText(f);
+}
+
+function mkBtn(label, cls, fn){
+  var b = document.createElement('button');
+  b.type = 'button'; b.textContent = label; if (cls) b.className = cls;
+  b.onclick = fn; return b;
+}
+
+function renderList(){
+  listEl.innerHTML = '';
+  var q = searchEl.value.trim().toLowerCase();
+  var items = notes.filter(function(n){
+    return !q || (n.title + '\n' + n.body).toLowerCase().indexOf(q) > -1;
+  });
+  countEl.textContent = !notes.length
+    ? 'No saved messages yet. Write or decrypt something, then choose Save to history.'
+    : (q ? items.length + ' of ' + notes.length + ' saved' : notes.length + ' saved');
+
+  items.forEach(function(n){
+    var card = document.createElement('div'); card.className = 'card';
+
+    var head = document.createElement('div'); head.className = 'card-head';
+    var t = document.createElement('div'); t.className = 'card-title'; t.textContent = n.title || 'Untitled';
+    var d = document.createElement('div'); d.className = 'card-date'; d.textContent = fmt(n.updated || n.created);
+    head.appendChild(t); head.appendChild(d); card.appendChild(head);
+
+    var bar = document.createElement('div'); bar.className = 'card-actions';
+
+    if (editingId === n.id){
+      var wrap = document.createElement('div'); wrap.className = 'edit-wrap';
+      var ta = document.createElement('textarea');
+      ta.className = 'mono'; ta.rows = 12; ta.spellcheck = false; ta.value = n.body;
+      wrap.appendChild(ta); card.appendChild(wrap);
+      bar.appendChild(mkBtn('Save changes', 'primary', function(){
+        n.body = ta.value; n.title = titleOf(ta.value); n.updated = Date.now();
+        editingId = null;
+        if (persist()){ renderList(); toast('Saved'); }
+      }));
+      bar.appendChild(mkBtn('Cancel', '', function(){ editingId = null; renderList(); }));
+      card.appendChild(bar);
+    } else {
+      var body = document.createElement('div'); body.className = 'md';
+      renderMd(n.body, body); card.appendChild(body);
+
+      bar.appendChild(mkBtn('Edit', '', function(){ editingId = n.id; renderList(); }));
+      bar.appendChild(mkBtn('Copy text', '', function(){ copyText(n.body); toast('Copied'); }));
+      bar.appendChild(mkBtn('Load above', '', function(){
+        inputEl.value = n.body; showPreview(n.body);
+        window.scrollTo(0, 0); toast('Loaded into the editor');
+      }));
+      bar.appendChild(mkBtn('Post to issue', '', function(){
+        inputEl.value = n.body; showPreview(n.body);
+        document.getElementById('postSource').value = 'editor';
+        postToGithub();
+      }));
+      bar.appendChild(mkBtn('Delete', 'danger', function(){
+        if (!confirm('Delete this message?')) return;
+        notes = notes.filter(function(x){ return x.id !== n.id; });
+        if (persist()){ renderList(); toast('Deleted'); }
+      }));
+      card.appendChild(bar);
+
+      if (body.scrollHeight > 320){
+        body.className = 'md clamp';
+        var more = document.createElement('div'); more.className = 'more';
+        var mb = mkBtn('Show more', 'link', function(){
+          var clamped = body.className.indexOf('clamp') > -1;
+          body.className = clamped ? 'md' : 'md clamp';
+          mb.textContent = clamped ? 'Show less' : 'Show more';
+        });
+        more.appendChild(mb);
+        card.insertBefore(more, bar);
+      }
+    }
+
+    listEl.appendChild(card);
+  });
+}
+
+/* ---------- start ---------- */
+if (!Store.ok) document.getElementById('storeWarn').className = 'banner';
+ghUrlEl.addEventListener('change', function(){ saveGh(true); });
+ghWrapEl.addEventListener('change', function(){ saveGh(true); });
+pwdEl.addEventListener('change', function(){
+  if (tokenLocked) unlockToken(true);
+  if (rulesLocked) unlockRules(true);
+});
+loadGh();
+loadRules();
+loadHistory();
+</script>
+</body>
+</html>
