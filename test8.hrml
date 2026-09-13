@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tiny Crypto</title>
+
+<!-- Bibliothèques statiques uniquement. Le texte ne quitte cet appareil qu'au moment où vous publiez sur une issue. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.4.7/purify.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<style>
+  :root{
+    --bg:#f6f8fa; --panel:#ffffff; --line:#d0d7de; --ink:#1f2328; --muted:#656d76;
+    --blue:#0969da; --green:#1a7f37; --red:#cf222e; --amber:#9a6700;
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    max-width:760px;margin:0 auto;padding:16px 16px 64px;background:var(--bg);color:var(--ink);
+    font-size:15px;line-height:1.5;
+  }
+  h2{margin:4px 0 2px;font-size:20px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+  fieldset{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:14px;margin:0 0 16px}
+  legend{font-size:13px;font-weight:600;color:var(--muted);padding:0 6px}
+  label.small{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+  h4{font-size:13px;color:var(--muted);margin:18px 0 8px;font-weight:600}
+  textarea,input[type=password],input[type=text],select{
+    width:100%;padding:10px;font-size:16px;border:1px solid var(--line);border-radius:6px;
+    background:#fff;color:var(--ink);font-family:inherit;
+  }
+  input[type=file]{width:100%;font-size:14px;padding:8px 0}
+  textarea{resize:vertical}
+  textarea.mono,input.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+  .row.tight{margin-top:6px}
+  button{
+    padding:9px 13px;font-size:14px;cursor:pointer;border:1px solid var(--line);
+    border-radius:6px;background:#f6f8fa;color:var(--ink);font-family:inherit;
+  }
+  button:hover{background:#eaeef2}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:1px}
+  button.primary{background:var(--green);border-color:var(--green);color:#fff}
+  button.primary:hover{background:#166b2e}
+  button.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+  button.blue:hover{background:#0757ba}
+  button.danger{color:var(--red)}
+  button.link{background:none;border:none;color:var(--blue);padding:4px 0}
+  .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:12px}
+  .check input{width:18px;height:18px;flex:0 0 auto}
+  .kinds{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:4px}
+  .kinds .check{margin-top:4px}
+  .note{font-size:12px;color:var(--muted);margin:8px 0 0}
+  .aide{border-left:3px solid var(--blue);background:#f6fbff;border-radius:0 6px 6px 0;
+    padding:10px 12px;font-size:12.5px;color:#2c3a44;margin:10px 0 0}
+  .aide b{color:var(--ink)}
+  .status{font-size:13px;margin:10px 0 0;min-height:1.2em}
+  .status.ok{color:var(--green)}
+  .status.bad{color:var(--red)}
+  .status.warn{color:var(--amber)}
+  .banner{border:1px solid #d4a72c;background:#fff8c5;border-radius:6px;padding:10px;font-size:13px;margin:0 0 14px}
+  .danger-banner{border:1px solid #ffc1c0;background:#fff5f5;border-radius:6px;padding:10px;font-size:12.5px;color:#7d2b2b;margin:10px 0 0}
+  .hidden{display:none !important}
+  .hint{border:1px dashed var(--line);border-radius:6px;padding:10px;font-size:13px;color:var(--muted)}
+
+  /* tableau du balayage */
+  .scan-box{border:1px solid var(--line);border-radius:6px;overflow:auto;max-height:360px;margin-top:8px}
+  table.scan{border-collapse:collapse;width:100%;font-size:13px}
+  table.scan th{position:sticky;top:0;background:#f6f8fa;text-align:left;font-weight:600;color:var(--muted);
+    padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.scan td{padding:7px 8px;border-bottom:1px solid #eaeef2;vertical-align:top;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+  table.scan tr:last-child td{border-bottom:0}
+  table.scan td.ph{color:var(--blue)}
+  table.scan td.kind,table.scan td.n,table.scan td.act{font-family:inherit;color:var(--muted);white-space:nowrap}
+  table.scan td.n{text-align:right}
+  table.scan td.act button{padding:3px 8px;font-size:12px}
+  .badge{display:inline-block;margin-left:6px;padding:0 5px;border-radius:8px;background:#ddf4ff;
+    color:var(--blue);font-family:inherit;font-size:11px;vertical-align:1px}
+
+  /* règles, valeurs captées, valeurs ignorées, fichiers */
+  .rule{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fbfcfd}
+  .rule .r-find{margin-bottom:6px}
+  .rule-b{display:flex;gap:6px;align-items:center}
+  .rule-b input{flex:1;min-width:0}
+  .rule-b button{flex:0 0 auto}
+  .arrow{color:var(--muted);font-size:12px;display:block;margin:0 0 4px}
+  .learn{display:flex;gap:6px;align-items:center;padding:6px 8px;border:1px solid var(--line);
+    border-radius:6px;margin-bottom:6px;background:#fbfcfd;font-size:13px}
+  .learn .ph{font-family:ui-monospace,Menlo,Consolas,monospace;flex:0 0 auto;color:var(--blue);word-break:break-all}
+  .learn .val{font-family:ui-monospace,Menlo,Consolas,monospace;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .learn input.val{padding:6px 8px;font-size:14px}
+  .learn button{padding:4px 8px;font-size:12px;flex:0 0 auto}
+
+  /* historique */
+  .hist-head{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .hist-head input{flex:1}
+  .count{font-size:12px;color:var(--muted);margin:0 0 10px}
+  .card{border:1px solid var(--line);border-radius:8px;background:var(--panel);margin-bottom:12px;overflow:hidden}
+  .card-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;
+    padding:8px 12px;background:#f6f8fa;border-bottom:1px solid var(--line)}
+  .card-title{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card-date{font-size:12px;color:var(--muted);white-space:nowrap}
+  .card .md,.card .edit-wrap{padding:12px}
+  .card-actions{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+  .clamp{max-height:300px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 75%,transparent)}
+  .more{padding:0 12px 8px}
+
+  /* rendu markdown façon gist */
+  .md{word-wrap:break-word}
+  .md>*:first-child{margin-top:0}
+  .md>*:last-child{margin-bottom:0}
+  .md h1,.md h2{border-bottom:1px solid #d8dee4;padding-bottom:.25em}
+  .md h1{font-size:1.45em}.md h2{font-size:1.2em}.md h3{font-size:1.05em}
+  .md h1,.md h2,.md h3,.md h4{margin:20px 0 12px;line-height:1.3;color:inherit;font-weight:600}
+  .md p,.md ul,.md ol,.md blockquote,.md table,.md pre{margin:0 0 14px}
+  .md ul,.md ol{padding-left:1.6em}
+  .md li+li{margin-top:.25em}
+  .md blockquote{border-left:3px solid var(--line);color:var(--muted);padding:0 1em;margin-left:0}
+  .md code{background:rgba(175,184,193,.2);padding:.2em .4em;border-radius:6px;font-size:85%;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .md pre{background:#f6f8fa;border:1px solid var(--line);padding:12px;border-radius:6px;overflow:auto}
+  .md pre code{background:none;padding:0;white-space:pre}
+  .md table{border-collapse:collapse;display:block;overflow:auto}
+  .md th,.md td{border:1px solid var(--line);padding:6px 12px}
+  .md tr:nth-child(2n){background:#f6f8fa}
+  .md img{max-width:100%}
+  .md a{color:var(--blue)}
+  .md hr{border:0;border-top:1px solid var(--line)}
+  .code-wrap{position:relative}
+  .code-copy{position:absolute;top:8px;right:8px;padding:3px 8px;font-size:12px;background:#fff;opacity:.9}
+
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2328;color:#fff;
+    padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+  #toast.show{opacity:1}
+  @media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+
+<h2>Tiny Crypto</h2>
+<p class="sub">Anonymiser, chiffrer et conserver des notes en markdown. Tout reste dans ce navigateur tant que vous ne publiez pas sur une issue.</p>
+
+<div id="storeWarn" class="banner hidden">
+  Cette page n'arrive pas à écrire dans le stockage du navigateur. Tout ce que vous enregistrez disparaîtra
+  à la fermeture de l'onglet. Servez-vous des boutons Exporter pour garder des sauvegardes.
+</div>
+
+<fieldset>
+  <legend>Message</legend>
+  <label class="small" for="pwd">Mot de passe</label>
+  <input type="password" id="pwd" placeholder="Déverrouille la table, l'historique et le jeton" autocomplete="off">
+
+  <label class="small" for="inputBox" style="margin-top:12px">Texte, markdown ou chaîne chiffrée</label>
+  <textarea id="inputBox" class="mono" rows="8" spellcheck="false"
+    placeholder="Écrivez ou collez du markdown ici. L'aperçu se met à jour à la frappe. Collez une chaîne chiffrée pour la déchiffrer."></textarea>
+
+  <div class="row">
+    <button onclick="collerTexte()">Coller</button>
+    <button onclick="apercuEditeur()">Aperçu</button>
+    <button onclick="toutEffacer()">Effacer</button>
+  </div>
+  <div class="row tight">
+    <button class="blue" id="btnChiffrer" onclick="chiffrer()">Compresser &amp; chiffrer</button>
+    <button class="blue" id="btnDechiffrer" onclick="dechiffrer()">Déchiffrer &amp; décompresser</button>
+  </div>
+  <label class="check">
+    <input type="checkbox" id="chainer" onchange="majLibellesChiffrement()">
+    Enchaîner avec l'anonymisation : anonymiser avant de chiffrer, désanonymiser après avoir déchiffré
+  </label>
+  <p class="note">
+    Avec cette option, une chaîne reçue d'un collègue redevient lisible en une seule étape : déchiffrée
+    <em>puis</em> remise en clair à partir de votre table.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Fichiers</legend>
+  <label class="small" for="fichiers">Fichiers texte à traiter (markdown, logs, .eml, .txt…)</label>
+  <input type="file" id="fichiers" multiple accept=".txt,.md,.log,.eml,.json,.csv,.yml,.yaml,.html,text/*">
+  <div class="kinds">
+    <label class="check"><input type="checkbox" id="fAnon" checked> Anonymiser</label>
+    <label class="check"><input type="checkbox" id="fChiffrer"> Chiffrer</label>
+  </div>
+  <div class="row">
+    <button class="blue" onclick="traiterFichiers()">Traiter les fichiers</button>
+    <button onclick="chargerFichiersDansEditeur()">Charger dans l'éditeur</button>
+  </div>
+  <p class="status" id="fichiersStatus"></p>
+  <div id="fichiersListe"></div>
+  <p class="note">
+    Les fichiers sont lus dans le navigateur, jamais envoyés. Ils sont traités les uns après les autres avec
+    la même table, donc une adresse présente dans trois courriels reçoit exactement le même jeton partout.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Anonymisation</legend>
+
+  <div id="ruleLock" class="hidden">
+    <p class="note" style="margin-top:0">Votre table de remplacement est enregistrée et verrouillée. Saisissez le mot de passe ci-dessus puis déverrouillez-la.</p>
+    <div class="row" style="margin-top:0"><button class="blue" onclick="deverrouillerRegles()">Déverrouiller la table</button></div>
+  </div>
+
+  <div id="ruleMain">
+    <div class="row" style="margin-top:0">
+      <button class="blue" onclick="anonymiser()">Anonymiser</button>
+      <button class="blue" onclick="desanonymiser()">Désanonymiser</button>
+      <button onclick="balayerEditeur()">Balayer seulement</button>
+    </div>
+    <p class="note">Ces trois actions portent sur l'éditeur ci-dessus. Le balayage montre ce qui serait remplacé sans rien modifier.</p>
+    <p class="status" id="anonStatus"></p>
+
+    <div id="scanWrap" class="hidden">
+      <div class="row tight" style="margin-top:0">
+        <button class="link" id="scanToggle" onclick="basculerTableau()">Replier le tableau</button>
+        <button class="link" onclick="masquerTableau()" style="margin-left:12px">Fermer</button>
+      </div>
+      <div id="scanBox" class="scan-box"></div>
+    </div>
+
+    <h4>Forme des jetons</h4>
+    <select id="mode" onchange="changerMode()">
+      <option value="compteur">Numérotation — [[IP_1]], [[IP_2]]…</option>
+      <option value="empreinte">Empreinte — [[IP_3f9c1a2b8d04]]</option>
+    </select>
+    <div class="aide">
+      <b>Numérotation</b> : courte et lisible, parfaite pour une discussion ponctuelle sur une issue. Les numéros
+      sont attribués dans l'ordre de rencontre, donc deux appareils ou deux corpus séparés donnent des numéros
+      différents pour la même valeur.<br><br>
+      <b>Empreinte</b> : le jeton est calculé à partir de la valeur et d'une clé secrète de projet. La même
+      adresse donne toujours le même jeton, n'importe où, sans rien partager d'autre que la clé. C'est le mode
+      à choisir pour constituer un corpus RAG au fil de l'eau : les relations entre documents restent justes
+      même si vous traitez les courriels par lots, sur plusieurs machines et à des mois d'intervalle.<br><br>
+      Une empreinte ne se calcule que dans un sens : la table reste indispensable pour revenir au texte réel.
+      Sans la clé, un jeton n'apprend rien à personne — c'est ce qui distingue ce mode d'un simple MD5, qui
+      se casse en quelques minutes par dictionnaire sur des adresses IP ou des courriels.<br><br>
+      Changer de mode ne touche pas aux couples déjà enregistrés : les anciens jetons continuent de fonctionner,
+      seules les nouvelles valeurs suivent le mode courant.
+    </div>
+
+    <div id="cleBloc" class="hidden">
+      <h4>Clé de projet</h4>
+      <p class="status" id="cleStatus"></p>
+      <input type="text" id="cleTexte" class="mono hidden" readonly>
+      <div class="row tight">
+        <button onclick="basculerCle()" id="cleVoirBtn">Afficher la clé</button>
+        <button onclick="copierCle()">Copier</button>
+        <button onclick="exporterCle()">Exporter (chiffré)</button>
+        <button onclick="document.getElementById('cleFichier').click()">Importer</button>
+        <button class="danger" onclick="regenererCle()">Nouvelle clé</button>
+        <input type="file" id="cleFichier" accept=".json,.txt" class="hidden" onchange="importerCle(this)">
+      </div>
+      <p class="note">
+        La clé est un secret de 256 bits tiré au hasard, indépendant du mot de passe : changer de mot de passe
+        ne renomme donc aucune entité de votre corpus. Elle est enregistrée chiffrée avec la table, et
+        l'export dédié produit un fichier lui aussi chiffré par votre mot de passe. Sauvegardez-la : sans
+        elle, une machine neuve recalculera d'autres jetons et vos rapprochements RAG seront rompus.
+      </p>
+    </div>
+
+    <h4>Motifs détectés automatiquement</h4>
+    <div class="kinds" id="kinds">
+      <label class="check"><input type="checkbox" id="kEmail" onchange="enregistrerRegles(true)"> Adresses courriel</label>
+      <label class="check"><input type="checkbox" id="kIpv4" onchange="enregistrerRegles(true)"> Adresses IPv4</label>
+      <label class="check"><input type="checkbox" id="kIpv6" onchange="enregistrerRegles(true)"> Adresses IPv6</label>
+      <label class="check"><input type="checkbox" id="kMac" onchange="enregistrerRegles(true)"> Adresses MAC</label>
+    </div>
+    <div class="row tight">
+      <button id="learnedBtn" onclick="basculerCaptees()">Voir les valeurs captées (0)</button>
+      <button id="exclBtn" onclick="basculerIgnorees()">Voir les valeurs ignorées (0)</button>
+      <button class="danger" onclick="oublierCaptees()">Oublier les valeurs captées</button>
+    </div>
+    <div id="learnedList" class="hidden" style="margin-top:10px"></div>
+    <div id="exclList" class="hidden" style="margin-top:10px"></div>
+
+    <h4>Remplacements fixes</h4>
+    <div id="ruleList"></div>
+    <div class="row">
+      <button onclick="ajouterRegle()">Ajouter une règle</button>
+      <button class="primary" onclick="enregistrerRegles()">Tout enregistrer</button>
+      <button onclick="exporterRegles()">Exporter</button>
+      <button onclick="document.getElementById('ruleFile').click()">Importer</button>
+      <button class="danger" onclick="supprimerRegles()">Tout supprimer</button>
+      <input type="file" id="ruleFile" accept=".json,.txt" class="hidden" onchange="importerRegles(this)">
+    </div>
+    <p class="note">
+      Dans la colonne de droite, écrivez soit un jeton complet — <code>[[ORG_1]]</code> — soit une simple
+      étiquette — <code>ORG</code>, <code>CLIENT</code> — que la page transforme en jeton selon le mode choisi.
+      Avec une étiquette et le mode empreinte, la table de règles ne contient plus aucun jeton : n'importe qui
+      disposant de la clé retrouvera exactement les mêmes.
+    </p>
+
+    <label class="check">
+      <input type="checkbox" id="anonCase" onchange="enregistrerRegles(true)">
+      Les remplacements fixes ignorent la casse
+    </label>
+    <label class="check">
+      <input type="checkbox" id="anonWord" onchange="enregistrerRegles(true)">
+      Les remplacements fixes ne visent que des mots entiers
+    </label>
+
+    <h4>Commandes sed</h4>
+    <div class="row" style="margin-top:0">
+      <button onclick="afficherSed('anonymiser')">Script d'anonymisation</button>
+      <button onclick="afficherSed('desanonymiser')">Script de désanonymisation</button>
+      <button class="link" onclick="masquerSed()" style="margin-left:8px">Fermer</button>
+    </div>
+    <div id="sedWrap" class="hidden">
+      <p class="status" id="sedStatus"></p>
+      <label class="small" style="margin-top:10px">Script à enregistrer</label>
+      <textarea id="sedScript" class="mono" rows="8" readonly spellcheck="false"></textarea>
+      <div class="row tight">
+        <button onclick="copierSed('sedScript')">Copier le script</button>
+        <button onclick="telechargerSed()">Télécharger le .sed</button>
+      </div>
+      <label class="small" style="margin-top:12px">Utilisation depuis un terminal Ubuntu</label>
+      <textarea id="sedUsage" class="mono" rows="7" readonly spellcheck="false"></textarea>
+      <div class="row tight"><button onclick="copierSed('sedUsage')">Copier les commandes</button></div>
+      <label class="small" style="margin-top:12px">Variante en une seule ligne</label>
+      <textarea id="sedInline" class="mono" rows="4" readonly spellcheck="false"></textarea>
+      <div class="row tight"><button onclick="copierSed('sedInline')">Copier la ligne</button></div>
+      <div class="danger-banner" id="sedDanger"></div>
+    </div>
+    <p class="note">
+      <code>sed</code> ne sait que remplacer des chaînes connues : il reproduit fidèlement votre table, mais il
+      n'inventera pas de jeton pour une adresse jamais rencontrée. Passez d'abord les fichiers dans cette page
+      une fois, puis servez-vous du script pour rejouer exactement la même transformation en masse.
+    </p>
+
+    <p class="note">
+      Ignorez une valeur pour protéger un faux positif — un numéro de version comme 1.2.3.4 qui ressemble à une
+      adresse. Une valeur ignorée n'est plus jamais captée par les motifs, alors que les règles fixes continuent
+      de s'y appliquer. Les motifs n'ont aucun discernement : une adresse invalide comme 10.4.2.300 est laissée
+      telle quelle, et un nom de machine, un identifiant de compte ou un numéro de ticket ne sera jamais capté
+      tant que vous ne l'aurez pas inscrit ci-dessus.
+    </p>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Résultat</legend>
+  <textarea id="outputBox" class="mono" rows="5" spellcheck="false" placeholder="Le texte chiffré ou déchiffré apparaît ici..." readonly></textarea>
+  <div class="row">
+    <button onclick="copierResultat()">Copier le résultat</button>
+    <button class="primary" onclick="enregistrerCourant()">Ajouter à l'historique</button>
+    <button onclick="publierSurGithub()">Publier sur l'issue</button>
+    <button onclick="basculerApercu()" id="previewBtn">Masquer l'aperçu</button>
+  </div>
+  <div id="previewWrap" style="margin-top:14px">
+    <label class="small">Aperçu</label>
+    <div id="preview" class="md" style="border:1px solid var(--line);border-radius:6px;padding:12px;background:#fff;min-height:60px"></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>Issue GitHub</legend>
+  <label class="small" for="ghUrl">Lien de l'issue</label>
+  <input type="text" id="ghUrl" placeholder="https://github.com/proprietaire/depot/issues/12" autocomplete="off" spellcheck="false">
+
+  <label class="small" for="ghToken" style="margin-top:12px">Jeton d'accès personnel</label>
+  <input type="password" id="ghToken" placeholder="github_pat_… ou ghp_…" autocomplete="off">
+  <div class="row tight">
+    <button onclick="basculerJeton()" id="jetonVoirBtn">Afficher le jeton</button>
+    <button onclick="copierJeton()">Copier le jeton</button>
+  </div>
+
+  <div class="row">
+    <button class="blue" onclick="publierSurGithub()">Publier le commentaire</button>
+    <button onclick="enregistrerGithub()">Enregistrer les réglages</button>
+    <button id="ghUnlockBtn" class="hidden" onclick="deverrouillerJeton()">Déverrouiller le jeton</button>
+    <button class="danger" onclick="oublierJeton()">Oublier le jeton</button>
+  </div>
+
+  <div class="row tight">
+    <select id="postSource" aria-label="Contenu à publier">
+      <option value="result">Publier la zone Résultat</option>
+      <option value="editor">Publier le texte de l'éditeur</option>
+    </select>
+  </div>
+
+  <label class="check">
+    <input type="checkbox" id="ghRemember" onchange="enregistrerGithub(true)">
+    Conserver le jeton sur cet appareil, chiffré avec le mot de passe ci-dessus
+  </label>
+  <label class="check">
+    <input type="checkbox" id="ghWrap" checked>
+    Encadrer le texte chiffré dans un bloc de code pour que GitHub ne l'abîme pas
+  </label>
+
+  <p class="status" id="ghStatus"></p>
+  <p class="note">
+    Utilisez un jeton à portée restreinte, limité à un seul dépôt, avec la permission Issues en lecture et
+    écriture. La publication est le seul moment où du texte quitte cet appareil, et juste avant l'envoi la page
+    balaie le contenu avec vos règles et vos motifs pour vous avertir s'il reste une valeur réelle. Le stockage
+    du navigateur est partagé par toutes les pages d'un même domaine : sur un site GitHub Pages personnel, un
+    autre projet que vous y publiez pourrait le lire.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Historique</legend>
+
+  <div id="lockPanel" class="hidden">
+    <p class="note" style="margin-top:0">Votre historique est verrouillé. Saisissez le mot de passe ci-dessus puis déverrouillez-le.</p>
+    <div class="row" style="margin-top:0"><button class="blue" onclick="deverrouillerHistorique()">Déverrouiller l'historique</button></div>
+  </div>
+
+  <div id="histMain">
+    <div class="hist-head">
+      <input type="text" id="search" placeholder="Rechercher dans les messages enregistrés" oninput="afficherListe()">
+    </div>
+    <p class="count" id="count"></p>
+    <div id="list"></div>
+
+    <div class="row">
+      <button onclick="exporterHistorique()">Exporter</button>
+      <button onclick="document.getElementById('importFile').click()">Importer</button>
+      <button class="danger" onclick="viderHistorique()">Tout supprimer</button>
+      <input type="file" id="importFile" accept=".json,.txt" class="hidden" onchange="importerHistorique(this)">
+    </div>
+
+    <label class="check">
+      <input type="checkbox" id="lockAtRest" onchange="basculerVerrouHistorique()">
+      Verrouiller l'historique avec le mot de passe ci-dessus
+    </label>
+    <p class="note">
+      L'historique ne vit que dans ce navigateur, sur cet appareil. Sans le verrou, les messages sont stockés
+      en clair : toute personne qui utilise l'appareil déverrouillé peut les lire.
+    </p>
+  </div>
+</fieldset>
+
+<div id="toast"></div>
+
+<script>
+/* ---------- stockage, avec repli si le navigateur le refuse ---------- */
+var HKEY = 'tinycrypto.history.v1';
+var GKEY = 'tinycrypto.github.v1';
+var RKEY = 'tinycrypto.rules.v1';
+var Store = (function(){
+  var ok = true, mem = {};
+  try { localStorage.setItem('__tc','1'); localStorage.removeItem('__tc'); }
+  catch(e){ ok = false; }
+  return {
+    ok: ok,
+    get: function(k){ return ok ? localStorage.getItem(k) : (mem[k] || null); },
+    set: function(k, v){ if (ok) localStorage.setItem(k, v); else mem[k] = v; },
+    clear: function(k){ if (ok) localStorage.removeItem(k); else delete mem[k]; }
+  };
+})();
+
+/* ---------- état ---------- */
+var notes = [];
+var locked = false, tokenLocked = false, rulesLocked = false;
+var editingId = null;
+var lastPlain = '';
+var learned = [];      // [[valeur réelle, jeton], ...] découvertes par les motifs
+var learnedIdx = {};   // valeur réelle -> jeton
+var counters = {};     // clé -> dernier numéro utilisé, jamais réattribué
+var excluded = [];     // valeurs que les motifs doivent laisser tranquilles
+var excludedIdx = {};
+var mode = 'compteur'; // 'compteur' ou 'empreinte'
+var cleProjet = '';    // secret 256 bits pour le mode empreinte
+var scanRows = [];     // dernier résultat de balayage
+var fichiersResultats = [];
+var sedSens = 'anonymiser';
+
+var pwdEl = document.getElementById('pwd');
+var inputEl = document.getElementById('inputBox');
+var outputEl = document.getElementById('outputBox');
+var previewEl = document.getElementById('preview');
+var listEl = document.getElementById('list');
+var countEl = document.getElementById('count');
+var searchEl = document.getElementById('search');
+var lockChk = document.getElementById('lockAtRest');
+var chainerEl = document.getElementById('chainer');
+var ghUrlEl = document.getElementById('ghUrl');
+var ghTokenEl = document.getElementById('ghToken');
+var ghRememberEl = document.getElementById('ghRemember');
+var ghWrapEl = document.getElementById('ghWrap');
+var ghStatusEl = document.getElementById('ghStatus');
+var ghUnlockBtn = document.getElementById('ghUnlockBtn');
+var ruleListEl = document.getElementById('ruleList');
+var anonStatusEl = document.getElementById('anonStatus');
+var anonCaseEl = document.getElementById('anonCase');
+var anonWordEl = document.getElementById('anonWord');
+var learnedListEl = document.getElementById('learnedList');
+var learnedBtn = document.getElementById('learnedBtn');
+var exclListEl = document.getElementById('exclList');
+var exclBtn = document.getElementById('exclBtn');
+var scanWrapEl = document.getElementById('scanWrap');
+var scanBoxEl = document.getElementById('scanBox');
+var scanToggleEl = document.getElementById('scanToggle');
+var modeEl = document.getElementById('mode');
+var cleBlocEl = document.getElementById('cleBloc');
+var cleStatusEl = document.getElementById('cleStatus');
+var cleTexteEl = document.getElementById('cleTexte');
+var sedWrapEl = document.getElementById('sedWrap');
+var fichiersEl = document.getElementById('fichiers');
+var fichiersListeEl = document.getElementById('fichiersListe');
+var fichiersStatusEl = document.getElementById('fichiersStatus');
+
+/* ---------- motifs détectés ----------
+   L'ordre compte : la première alternative qui accroche à une position l'emporte,
+   donc ops@10.4.2.7 est pris comme un courriel entier et non comme une IP isolée. */
+var DET = {
+  email: { box:'kEmail', label:'courriel', prefix:'EMAIL',
+    src:'[A-Za-z0-9._%+\\-]+@(?:[A-Za-z0-9](?:[A-Za-z0-9.\\-]*[A-Za-z0-9])?\\.[A-Za-z]{2,24}|\\[?(?:\\d{1,3}\\.){3}\\d{1,3}\\]?)' },
+  mac:   { box:'kMac', label:'MAC', prefix:'MAC',
+    src:'\\b[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}\\b' },
+  ipv6:  { box:'kIpv6', label:'IPv6', prefix:'IPV6',
+    src:'(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?::(?:[0-9A-Fa-f]{1,4}(?::[0-9A-Fa-f]{1,4})*)?' },
+  ipv4:  { box:'kIpv4', label:'IPv4', prefix:'IP',
+    src:'\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b' }
+};
+var KIND_ORDER = ['email','mac','ipv6','ipv4'];
+var ANCHORED = {};
+KIND_ORDER.forEach(function(k){ ANCHORED[k] = new RegExp('^(?:' + DET[k].src + ')$'); });
+
+function motifsActifs(){
+  return KIND_ORDER.filter(function(k){ return document.getElementById(DET[k].box).checked; });
+}
+function estAlphanum(c){ return /[0-9A-Za-z]/.test(c || ''); }
+
+/* Deuxième regard sur un candidat, en tenant compte de son voisinage, pour écarter les faux positifs. */
+function detectionValide(kind, m, off, whole){
+  var prev = whole.charAt(off - 1), next = whole.charAt(off + m.length);
+  if (kind === 'ipv4'){
+    var o = m.split('.');
+    for (var i = 0; i < 4; i++){ if (parseInt(o[i], 10) > 255) return false; }
+    if (prev === '.' || /\d/.test(prev)) return false;
+    if (next === '.' && /\d/.test(whole.charAt(off + m.length + 1))) return false;
+    return true;
+  }
+  if (kind === 'ipv6'){
+    var g = m.split(':').filter(function(x){ return x !== ''; });
+    if (!g.length) return false;                            // un :: tout seul n'est pas une adresse
+    if (m.indexOf('::') < 0 && g.length !== 8) return false;
+    if (estAlphanum(prev) || estAlphanum(next)) return false; // préserve std::vector et Foo::Bar
+    return true;
+  }
+  return true;
+}
+
+/* ---------- utilitaires ---------- */
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show';
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.className = ''; }, 1800);
+}
+function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+function escRe(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function dateFr(ts){ try { return new Date(ts).toLocaleString('fr-FR'); } catch(e){ return ''; } }
+function titreDe(text){
+  var lignes = (text || '').split('\n'), ligne = 'Sans titre';
+  for (var i = 0; i < lignes.length; i++){ if (lignes[i].trim()){ ligne = lignes[i]; break; } }
+  return ligne.replace(/^#{1,6}\s*/, '').replace(/[*_`>]/g, '').trim().slice(0, 70) || 'Sans titre';
+}
+function nouvelId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function semblechiffre(s){
+  s = (s || '').trim();
+  return s.length > 24 && /^U2FsdGVkX1[A-Za-z0-9+/=\s]+$/.test(s);
+}
+function copierTexte(text){
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).catch(function(){ copieHeritee(text); });
+  } else { copieHeritee(text); }
+}
+function copieHeritee(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, 999999);
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
+}
+function telecharger(nom, contenu, type){
+  var blob = new Blob([contenu], { type: type || 'text/plain' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nom;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+}
+
+/* ---------- markdown ---------- */
+if (window.marked && marked.setOptions) marked.setOptions({ gfm:true, breaks:true, headerIds:false, mangle:false });
+
+function rendreMarkdown(md, el){
+  var html;
+  try {
+    if (window.marked) html = marked.parse ? marked.parse(md || '') : marked(md || '');
+    else html = '<pre>' + esc(md) + '</pre>';
+  } catch(e){ html = '<pre>' + esc(md) + '</pre>'; }
+  if (window.DOMPurify) html = DOMPurify.sanitize(html);
+  el.innerHTML = html;
+  var liens = el.querySelectorAll('a');
+  for (var i = 0; i < liens.length; i++){ liens[i].target = '_blank'; liens[i].rel = 'noopener noreferrer'; }
+  decorerBlocsCode(el);
+}
+
+function decorerBlocsCode(racine){
+  var pres = racine.querySelectorAll('pre');
+  for (var i = 0; i < pres.length; i++){
+    (function(pre){
+      if (pre.parentNode && pre.parentNode.className === 'code-wrap') return;
+      var wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(pre);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'code-copy'; btn.textContent = 'Copier';
+      btn.onclick = function(){
+        var code = pre.querySelector('code');
+        copierTexte(code ? code.innerText : pre.innerText);
+        btn.textContent = 'Copié'; setTimeout(function(){ btn.textContent = 'Copier'; }, 1400);
+      };
+      wrap.appendChild(btn);
+      if (window.hljs){
+        var c = pre.querySelector('code');
+        if (c) { try { hljs.highlightElement(c); } catch(e){} }
+      }
+    })(pres[i]);
+  }
+}
+
+/* ---------- éditeur et aperçu ---------- */
+function montrerApercu(text){
+  lastPlain = text;
+  if (semblechiffre(text)){
+    previewEl.innerHTML = '<div class="hint">On dirait une chaîne chiffrée. Saisissez le mot de passe ' +
+      'puis utilisez Déchiffrer &amp; décompresser pour la lire.</div>';
+    return;
+  }
+  rendreMarkdown(text, previewEl);
+}
+function apercuEditeur(){
+  montrerApercu(inputEl.value);
+  document.getElementById('previewWrap').className = '';
+  document.getElementById('previewBtn').textContent = "Masquer l'aperçu";
+}
+var minuteurApercu = null;
+inputEl.addEventListener('input', function(){
+  clearTimeout(minuteurApercu);
+  minuteurApercu = setTimeout(function(){ montrerApercu(inputEl.value); }, 250);
+});
+function collerTexte(){
+  if (navigator.clipboard && navigator.clipboard.readText && window.isSecureContext){
+    navigator.clipboard.readText().then(function(text){
+      if (!text){ toast('Le presse-papiers est vide'); return; }
+      inputEl.value = text; montrerApercu(text); toast('Collé');
+    }).catch(function(){ indiceCollage(); });
+  } else { indiceCollage(); }
+}
+function indiceCollage(){ inputEl.focus(); toast('Appui long sur la zone puis Coller'); }
+
+/* ---------- messages d'état ---------- */
+function anonDire(msg, genre){
+  anonStatusEl.textContent = msg;
+  anonStatusEl.className = 'status' + (genre ? ' ' + genre : '');
+}
+function ghDire(msg, genre){
+  ghStatusEl.textContent = msg;
+  ghStatusEl.className = 'status' + (genre ? ' ' + genre : '');
+}
+
+/* ---------- règles fixes ---------- */
+function ligneRegle(find, repl){
+  var box = document.createElement('div'); box.className = 'rule';
+  var a = document.createElement('input');
+  a.type = 'text'; a.className = 'r-find mono'; a.spellcheck = false;
+  a.placeholder = 'Texte sensible, par exemple Acme Corp'; a.value = find || '';
+  var lbl = document.createElement('span'); lbl.className = 'arrow'; lbl.textContent = 'remplacé par';
+  var b = document.createElement('div'); b.className = 'rule-b';
+  var c = document.createElement('input');
+  c.type = 'text'; c.className = 'r-repl mono'; c.spellcheck = false;
+  c.placeholder = 'ORG ou [[ORG_1]]'; c.value = repl || '';
+  var del = document.createElement('button');
+  del.type = 'button'; del.className = 'danger'; del.textContent = 'Retirer';
+  del.onclick = function(){ box.parentNode.removeChild(box); };
+  b.appendChild(c); b.appendChild(del);
+  box.appendChild(a); box.appendChild(lbl); box.appendChild(b);
+  return box;
+}
+function afficherRegles(liste){
+  ruleListEl.innerHTML = '';
+  (liste || []).forEach(function(r){ ruleListEl.appendChild(ligneRegle(r.find, r.repl)); });
+  if (!ruleListEl.children.length) ajouterRegle();
+}
+function ajouterRegle(){ ruleListEl.appendChild(ligneRegle('', '')); }
+
+function lireRegles(){
+  var out = [], lignes = ruleListEl.querySelectorAll('.rule');
+  for (var i = 0; i < lignes.length; i++){
+    var f = lignes[i].querySelector('.r-find').value;
+    var r = lignes[i].querySelector('.r-repl').value;
+    if (f.trim() === '' && r.trim() === '') continue;
+    out.push({ find: f, repl: r, el: lignes[i] });
+  }
+  return out;
+}
+function verifierRegles(liste){
+  var vusFind = {}, vusRepl = {}, soucis = [];
+  liste.forEach(function(r){
+    if (!r.find.trim()){ soucis.push("Une règle n'a pas de texte sensible."); return; }
+    if (!r.repl.trim()){ soucis.push('« ' + r.find + ' » n\'a pas de remplacement, elle ne pourrait pas être inversée.'); return; }
+    if (r.find === r.repl){ soucis.push('« ' + r.find + ' » se remplace par elle-même.'); return; }
+    if (vusFind[r.find]) soucis.push('« ' + r.find + ' » est présente deux fois.');
+    if (vusRepl[r.repl]) soucis.push('Le jeton ' + r.repl + ' sert pour deux valeurs différentes : l\'inversion serait ambiguë.');
+    vusFind[r.find] = true; vusRepl[r.repl] = true;
+  });
+  return soucis;
+}
+
+/* ---------- liste des valeurs ignorées ---------- */
+function reconstruireIndexIgnorees(){
+  excludedIdx = {};
+  excluded.forEach(function(v){ excludedIdx[v] = 1; excludedIdx[String(v).toLowerCase()] = 1; });
+}
+function estIgnoree(v){ return !!(excludedIdx[v] || excludedIdx[String(v).toLowerCase()]); }
+
+function ignorerValeur(v){
+  v = (v || '').trim();
+  if (!v) return false;
+  if (estIgnoree(v)){ anonDire('« ' + v + ' » est déjà ignorée.', 'warn'); return false; }
+  var jeton = learnedIdx[v];
+  if (jeton && !confirm('« ' + v + ' » est associée à ' + jeton + '. L\'ignorer supprime ce couple, et un texte ' +
+      'déjà anonymisé avec ' + jeton + ' ne pourra plus être inversé. Continuer ?')) return false;
+  if (jeton){
+    learned = learned.filter(function(x){ return x[0] !== v; });
+    delete learnedIdx[v];
+  }
+  excluded.push(v);
+  reconstruireIndexIgnorees();
+  afficherCaptees(); afficherIgnorees(); enregistrerRegles(true);
+  anonDire('Les motifs laisseront « ' + v + ' » tranquille désormais.', 'ok');
+  return true;
+}
+function nePlusIgnorer(v){
+  excluded = excluded.filter(function(x){ return x !== v; });
+  reconstruireIndexIgnorees();
+  afficherIgnorees(); enregistrerRegles(true);
+  anonDire('« ' + v + ' » peut de nouveau être captée.', 'ok');
+}
+function afficherIgnorees(){
+  exclBtn.textContent = (exclListEl.className === 'hidden' ? 'Voir' : 'Masquer') +
+    ' les valeurs ignorées (' + excluded.length + ')';
+  if (exclListEl.className === 'hidden') return;
+  exclListEl.innerHTML = '';
+
+  var form = document.createElement('div'); form.className = 'learn';
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'val mono'; inp.spellcheck = false;
+  inp.placeholder = 'Valeur que les motifs doivent laisser telle quelle';
+  var add = document.createElement('button');
+  add.type = 'button'; add.className = 'blue'; add.textContent = 'Ignorer';
+  add.onclick = function(){ if (ignorerValeur(inp.value)) inp.value = ''; };
+  inp.onkeydown = function(e){ if (e.key === 'Enter'){ e.preventDefault(); add.onclick(); } };
+  form.appendChild(inp); form.appendChild(add);
+  exclListEl.appendChild(form);
+
+  if (!excluded.length){
+    var p = document.createElement('p'); p.className = 'note';
+    p.textContent = 'Aucune valeur ignorée. Ajoutez-en une ci-dessus, ou servez-vous du bouton Ignorer dans le tableau de balayage.';
+    exclListEl.appendChild(p);
+    return;
+  }
+  excluded.forEach(function(v){
+    var ligne = document.createElement('div'); ligne.className = 'learn';
+    var val = document.createElement('span'); val.className = 'val'; val.textContent = v;
+    var del = document.createElement('button');
+    del.type = 'button'; del.textContent = 'Ne plus ignorer';
+    del.onclick = function(){ nePlusIgnorer(v); };
+    ligne.appendChild(val); ligne.appendChild(del);
+    exclListEl.appendChild(ligne);
+  });
+}
+function basculerIgnorees(){
+  exclListEl.className = exclListEl.className === 'hidden' ? '' : 'hidden';
+  afficherIgnorees();
+}
+
+/* ---------- fabrication des jetons ---------- */
+/* Table jeton -> valeur qui l'occupe, pour ne jamais attribuer deux fois le même. */
+function jetonsUtilises(){
+  var m = {};
+  learned.forEach(function(p){ m[p[1]] = p[0]; });
+  lireRegles().forEach(function(r){
+    var v = (r.repl || '').trim();
+    if (v.indexOf('[[') === 0) m[v] = r.find;
+  });
+  return m;
+}
+/* Mode numérotation : le compteur n'est jamais remis en arrière, un ancien jeton garde donc son sens. */
+function jetonCompteur(cle, prefixe, compteurs, occupes){
+  var n = compteurs[cle] || 0, jeton;
+  do { n++; jeton = '[[' + prefixe + '_' + n + ']]'; } while (occupes[jeton]);
+  compteurs[cle] = n;
+  return jeton;
+}
+/* Mode empreinte : HMAC-SHA256 de la valeur normalisée avec la clé de projet.
+   Le HMAC, contrairement à un MD5 nu, résiste à l'attaque par dictionnaire : sans la clé,
+   impossible de recalculer le jeton d'une adresse que l'on soupçonne.
+   On rallonge l'empreinte si le jeton court est déjà pris par une autre valeur. */
+function jetonEmpreinte(prefixe, valeur, occupes){
+  var norm = String(valeur).toLowerCase();
+  var h = CryptoJS.HmacSHA256(norm, cleProjet).toString();
+  var tailles = [12, 16, 24, 64], jeton = '';
+  for (var i = 0; i < tailles.length; i++){
+    jeton = '[[' + prefixe + '_' + h.slice(0, tailles[i]) + ']]';
+    var occupant = occupes[jeton];
+    if (!occupant || String(occupant).toLowerCase() === norm) return jeton;
+  }
+  return jeton;
+}
+function nouveauJeton(kind, valeur, occupes, compteurs){
+  if (mode === 'empreinte') return jetonEmpreinte(DET[kind].prefix, valeur, occupes);
+  return jetonCompteur(kind, DET[kind].prefix, compteurs, occupes);
+}
+
+/* ---------- clé de projet ---------- */
+function genererCle(){
+  return CryptoJS.lib.WordArray.random(32).toString();
+}
+function assurerCle(){
+  if (mode !== 'empreinte') return true;
+  if (cleProjet) return true;
+  cleProjet = genererCle();
+  majEtatCle();
+  enregistrerRegles(true);
+  anonDire('Une clé de projet a été tirée au hasard. Exportez-la avant de constituer votre corpus.', 'warn');
+  return true;
+}
+function majEtatCle(){
+  cleBlocEl.className = (mode === 'empreinte') ? '' : 'hidden';
+  cleTexteEl.value = cleProjet;
+  if (!cleProjet){
+    cleStatusEl.textContent = 'Aucune clé pour le moment : elle sera tirée au hasard à la première anonymisation.';
+    cleStatusEl.className = 'status warn';
+  } else {
+    cleStatusEl.textContent = 'Clé définie, empreinte ' + cleProjet.slice(0, 8) + '… (' + (cleProjet.length * 4) + ' bits).';
+    cleStatusEl.className = 'status ok';
+  }
+}
+function basculerCle(){
+  var cache = cleTexteEl.className.indexOf('hidden') > -1;
+  cleTexteEl.className = cache ? 'mono' : 'mono hidden';
+  document.getElementById('cleVoirBtn').textContent = cache ? 'Masquer la clé' : 'Afficher la clé';
+}
+function copierCle(){
+  if (!cleProjet){ anonDire('Aucune clé à copier.', 'warn'); return; }
+  copierTexte(cleProjet); toast('Clé copiée');
+}
+function regenererCle(){
+  if (!confirm('Tirer une nouvelle clé ? Les couples déjà enregistrés restent valables, mais toute nouvelle ' +
+    'valeur recevra un jeton différent de celui qu\'aurait produit l\'ancienne clé. Un corpus déjà indexé ne ' +
+    'se recoupera plus avec les documents suivants.')) return;
+  cleProjet = genererCle();
+  majEtatCle(); enregistrerRegles(true);
+  anonDire('Nouvelle clé en place.', 'ok');
+}
+function exporterCle(){
+  if (!cleProjet){ anonDire('Aucune clé à exporter.', 'warn'); return; }
+  if (!pwdEl.value){ anonDire('Saisissez un mot de passe : la sauvegarde de la clé est toujours chiffrée.', 'bad'); return; }
+  var contenu = JSON.stringify({ kind:'cle', enc:true, data: CryptoJS.AES.encrypt(cleProjet, pwdEl.value).toString() });
+  telecharger('tiny-crypto-cle-' + new Date().toISOString().slice(0,10) + '.json', contenu, 'application/json');
+  anonDire('Clé exportée, chiffrée par votre mot de passe.', 'ok');
+}
+function importerCle(champ){
+  var f = champ.files && champ.files[0];
+  if (!f) return;
+  var lecteur = new FileReader();
+  lecteur.onload = function(){
+    try {
+      var obj = JSON.parse(lecteur.result);
+      if (!pwdEl.value) throw new Error('saisissez d\'abord le mot de passe de la sauvegarde');
+      var clair = CryptoJS.AES.decrypt(obj.data, pwdEl.value).toString(CryptoJS.enc.Utf8);
+      if (!clair) throw new Error('mot de passe incorrect');
+      if (cleProjet && cleProjet !== clair && !confirm('Remplacer la clé actuelle par celle du fichier ?')){ champ.value=''; return; }
+      cleProjet = clair.trim();
+      majEtatCle(); enregistrerRegles(true);
+      anonDire('Clé importée.', 'ok');
+    } catch(e){ anonDire('Lecture impossible : ' + e.message, 'bad'); }
+    champ.value = '';
+  };
+  lecteur.readAsText(f);
+}
+function changerMode(){
+  mode = modeEl.value;
+  majEtatCle();
+  if (mode === 'empreinte') assurerCle();
+  enregistrerRegles(true);
+  masquerTableau();
+  anonDire(mode === 'empreinte'
+    ? 'Mode empreinte : les nouvelles valeurs reçoivent un jeton calculé avec la clé de projet.'
+    : 'Mode numérotation : les nouvelles valeurs reçoivent un numéro court.', 'ok');
+}
+
+/* ---------- moteur de remplacement ---------- */
+/* Résout la colonne de droite : jeton littéral tel quel, étiquette simple transformée en jeton. */
+function reglesResolues(compteurs, materialiser){
+  var brutes = lireRegles().filter(function(r){ return r.find.trim() && r.repl.trim(); });
+  var occupes = jetonsUtilises();
+  var out = [];
+  brutes.forEach(function(r){
+    var repl = r.repl.trim();
+    if (repl.indexOf('[[') === 0){ out.push({ find:r.find, repl:repl }); return; }
+    var etiquette = repl.replace(/[^A-Za-z0-9_]/g, '').toUpperCase() || 'TERME';
+    var jeton = (mode === 'empreinte')
+      ? jetonEmpreinte(etiquette, r.find, occupes)
+      : jetonCompteur('etiquette:' + etiquette, etiquette, compteurs, occupes);
+    occupes[jeton] = r.find;
+    if (materialiser && mode !== 'empreinte' && r.el){ r.el.querySelector('.r-repl').value = jeton; }
+    out.push({ find:r.find, repl:jeton });
+  });
+  return out;
+}
+
+/* Une seule passe : règles fixes d'abord (les plus longues en tête), puis les motifs. */
+function construireBalayeur(regles, motifs, ignorerCasse, motsEntiers){
+  var morceaux = [], table = {};
+  regles.slice().sort(function(a, b){ return b.find.length - a.find.length; }).forEach(function(r){
+    var pat = escRe(r.find);
+    if (motsEntiers && /^[\w]/.test(r.find) && /[\w]$/.test(r.find)) pat = '\\b' + pat + '\\b';
+    morceaux.push('(?:' + pat + ')');
+    table[ignorerCasse ? r.find.toLowerCase() : r.find] = r.repl;
+  });
+  motifs.forEach(function(k){ morceaux.push('(?:' + DET[k].src + ')'); });
+  if (!morceaux.length) return null;
+  return { re: new RegExp(morceaux.join('|'), 'g' + (ignorerCasse ? 'i' : '')), table: table };
+}
+
+function preparer(silencieux, compteurs, materialiser){
+  if (rulesLocked){ if (!silencieux) anonDire('Déverrouillez d\'abord la table de remplacement.', 'bad'); return null; }
+  if (mode === 'empreinte' && !cleProjet && !silencieux) assurerCle();
+  if (mode === 'empreinte' && !cleProjet) return null;
+  var regles = reglesResolues(compteurs || counters, !!materialiser);
+  var soucis = verifierRegles(regles);
+  if (soucis.length){ if (!silencieux) anonDire(soucis[0], 'bad'); return null; }
+  var motifs = motifsActifs();
+  if (!regles.length && !motifs.length){
+    if (!silencieux) anonDire('Activez un motif ou ajoutez une règle fixe pour commencer.', 'bad');
+    return null;
+  }
+  return { regles: regles, motifs: motifs };
+}
+
+/* Cœur de l'anonymisation, réutilisé par l'éditeur et par le traitement de fichiers. */
+function appliquerAnonymisation(texte, cfg, bilan){
+  var ic = anonCaseEl.checked, me = anonWordEl.checked;
+  var b = construireBalayeur(cfg.regles, cfg.motifs, ic, me);
+  var occupes = jetonsUtilises();
+  return texte.replace(b.re, function(m, off, whole){
+    var cle = ic ? m.toLowerCase() : m;
+    if (cle in b.table){ bilan.total++; bilan.regles[cle] = 1; return b.table[cle]; }
+    if (estIgnoree(m)){ bilan.ignores++; return m; }
+    for (var i = 0; i < cfg.motifs.length; i++){
+      var k = cfg.motifs[i];
+      if (!ANCHORED[k].test(m)) continue;
+      if (!detectionValide(k, m, off, whole)) continue;
+      var jeton = learnedIdx[m];
+      if (!jeton){
+        jeton = nouveauJeton(k, m, occupes, counters);
+        learnedIdx[m] = jeton; learned.push([m, jeton]);
+        occupes[jeton] = m; bilan.nouveaux++;
+      }
+      bilan.total++; bilan.parMotif[k] = (bilan.parMotif[k] || 0) + 1;
+      return jeton;
+    }
+    return m;
+  });
+}
+
+function nouveauBilan(){
+  return { total:0, nouveaux:0, ignores:0, regles:{}, parMotif:{} };
+}
+
+function anonymiser(){
+  var cfg = preparer(false, counters, true); if (!cfg) return;
+  var texte = inputEl.value;
+  if (!texte){ anonDire("L'éditeur est vide.", 'bad'); return; }
+
+  var conflit = cfg.regles.filter(function(r){ return texte.indexOf(r.repl) > -1; });
+  if (conflit.length && !confirm('Le texte contient déjà le jeton ' + conflit[0].repl +
+      '. Une inversion ultérieure pourrait restaurer plus que prévu. Continuer ?')) return;
+
+  var bilan = nouveauBilan();
+  var sortie = appliquerAnonymisation(texte, cfg, bilan);
+  inputEl.value = sortie;
+  montrerApercu(sortie);
+  afficherCaptees();
+  masquerTableau();
+  anonDire(resumeBilan(bilan, cfg), bilan.total ? 'ok' : 'warn');
+  if (pwdEl.value) enregistrerRegles(true);
+  return sortie;
+}
+
+function resumeBilan(bilan, cfg){
+  var bouts = [];
+  var nbRegles = Object.keys(bilan.regles).length;
+  if (nbRegles) bouts.push(nbRegles + ' règle' + (nbRegles === 1 ? '' : 's') + ' fixe' + (nbRegles === 1 ? '' : 's'));
+  cfg.motifs.forEach(function(k){ if (bilan.parMotif[k]) bouts.push(bilan.parMotif[k] + ' ' + DET[k].label); });
+  var msg = bilan.total + ' remplacement' + (bilan.total === 1 ? '' : 's') + (bouts.length ? ' — ' + bouts.join(', ') : '') + '.';
+  if (bilan.nouveaux) msg += ' ' + bilan.nouveaux + ' nouvelle' + (bilan.nouveaux === 1 ? '' : 's') + ' valeur' +
+    (bilan.nouveaux === 1 ? '' : 's') + ' ajoutée' + (bilan.nouveaux === 1 ? '' : 's') + ' à la table.';
+  if (bilan.ignores) msg += ' ' + bilan.ignores + ' laissée' + (bilan.ignores === 1 ? '' : 's') + ' de côté par la liste des ignorées.';
+  if (!pwdEl.value) msg += ' Saisissez un mot de passe puis Tout enregistrer, sinon la table sera perdue à la fermeture et ce texte deviendra irréversible.';
+  return msg;
+}
+
+/* Construit la table inverse : jeton -> valeur réelle. */
+function couplesInverses(cfg){
+  var couples = (cfg ? cfg.regles : []).map(function(r){ return [r.repl, r.find]; })
+    .concat(learned.map(function(p){ return [p[1], p[0]]; }));
+  couples.sort(function(a, b){ return b[0].length - a[0].length; });
+  return couples;
+}
+function appliquerDesanonymisation(texte, cfg, compteur){
+  var couples = couplesInverses(cfg);
+  if (!couples.length) return texte;
+  var table = {};
+  couples.forEach(function(p){ table[p[0]] = p[1]; });
+  var re = new RegExp(couples.map(function(p){ return '(?:' + escRe(p[0]) + ')'; }).join('|'), 'g');
+  return texte.replace(re, function(m){
+    if (!(m in table)) return m;
+    if (compteur) compteur.n++;
+    return table[m];
+  });
+}
+function desanonymiser(){
+  var cfg = preparer(false, Object.assign({}, counters), false); if (!cfg) return;
+  var texte = inputEl.value;
+  if (!texte){ anonDire("L'éditeur est vide.", 'bad'); return; }
+  var compteur = { n:0 };
+  var sortie = appliquerDesanonymisation(texte, cfg, compteur);
+  inputEl.value = sortie;
+  montrerApercu(sortie);
+  masquerTableau();
+  anonDire(compteur.n + ' valeur' + (compteur.n === 1 ? '' : 's') + ' restaurée' + (compteur.n === 1 ? '' : 's') + '.',
+    compteur.n ? 'ok' : 'warn');
+}
+
+/* ---------- balayage : ce qui serait remplacé, sans rien toucher ---------- */
+function balayerValeurs(texte){
+  var lignes = [];
+  lignes.ignores = 0;
+  if (!texte) return lignes;
+  var compteursTest = {};
+  KIND_ORDER.forEach(function(k){ compteursTest[k] = counters[k] || 0; });
+  Object.keys(counters).forEach(function(k){ compteursTest[k] = counters[k]; });
+  var cfg = preparer(true, compteursTest, false);
+  if (!cfg) return lignes;
+  var ic = anonCaseEl.checked;
+  var b = construireBalayeur(cfg.regles, cfg.motifs, ic, anonWordEl.checked);
+  var index = {}, occupes = jetonsUtilises();
+
+  function noter(valeur, jeton, genre, neuf){
+    if (index[valeur]){ index[valeur].count++; return; }
+    var l = { value: valeur, repl: jeton, kind: genre, count: 1, isNew: !!neuf };
+    index[valeur] = l; lignes.push(l);
+  }
+
+  texte.replace(b.re, function(m, off, whole){
+    var cle = ic ? m.toLowerCase() : m;
+    if (cle in b.table){ noter(m, b.table[cle], 'règle fixe', false); return m; }
+    if (estIgnoree(m)){ lignes.ignores++; return m; }
+    for (var i = 0; i < cfg.motifs.length; i++){
+      var k = cfg.motifs[i];
+      if (!ANCHORED[k].test(m)) continue;
+      if (!detectionValide(k, m, off, whole)) continue;
+      if (index[m]){ index[m].count++; return m; }
+      var jeton = learnedIdx[m], neuf = false;
+      if (!jeton){ jeton = nouveauJeton(k, m, occupes, compteursTest); occupes[jeton] = m; neuf = true; }
+      noter(m, jeton, DET[k].label, neuf);
+      return m;
+    }
+    return m;
+  });
+  return lignes;
+}
+
+function balayerEditeur(){
+  var cfg = preparer(false, Object.assign({}, counters), false); if (!cfg) return;
+  var texte = inputEl.value;
+  if (!texte){ anonDire("L'éditeur est vide.", 'bad'); masquerTableau(); return; }
+  scanRows = balayerValeurs(texte);
+  var ignores = scanRows.ignores || 0;
+  if (!scanRows.length){
+    masquerTableau();
+    anonDire('Rien à remplacer' + (ignores ? ', et ' + ignores + ' occurrence' + (ignores === 1 ? '' : 's') +
+      ' sur la liste des ignorées' : '') + '.', 'ok');
+    return;
+  }
+  var occurrences = scanRows.reduce(function(a, r){ return a + r.count; }, 0);
+  var neufs = scanRows.filter(function(r){ return r.isNew; }).length;
+  anonDire(scanRows.length + ' valeur' + (scanRows.length === 1 ? '' : 's') + ' distincte' +
+    (scanRows.length === 1 ? '' : 's') + ' sur ' + occurrences + ' emplacement' + (occurrences === 1 ? '' : 's') +
+    (neufs ? ', dont ' + neufs + ' absente' + (neufs === 1 ? '' : 's') + ' de la table' : '') +
+    (ignores ? ', ' + ignores + ' ignorée' + (ignores === 1 ? '' : 's') : '') + '. Rien n\'a été modifié.', 'warn');
+  scanWrapEl.className = '';
+  scanBoxEl.className = 'scan-box';
+  scanToggleEl.textContent = 'Replier le tableau';
+  rendreTableau();
+}
+
+function rendreTableau(){
+  scanBoxEl.innerHTML = '';
+  var table = document.createElement('table');
+  table.className = 'scan';
+  var thead = document.createElement('thead');
+  var hr = document.createElement('tr');
+  ['Valeur', 'Devient', 'Détecté par', '×', ''].forEach(function(h){
+    var th = document.createElement('th'); th.textContent = h; hr.appendChild(th);
+  });
+  thead.appendChild(hr); table.appendChild(thead);
+
+  var tb = document.createElement('tbody');
+  scanRows.forEach(function(r){
+    var tr = document.createElement('tr');
+    var v = document.createElement('td'); v.textContent = r.value;
+    var p = document.createElement('td'); p.className = 'ph'; p.textContent = r.repl;
+    if (r.isNew){
+      var b = document.createElement('span'); b.className = 'badge'; b.textContent = 'nouveau';
+      p.appendChild(b);
+    }
+    var k = document.createElement('td'); k.className = 'kind'; k.textContent = r.kind;
+    var n = document.createElement('td'); n.className = 'n'; n.textContent = r.count;
+    var act = document.createElement('td'); act.className = 'act';
+    if (r.kind !== 'règle fixe'){
+      var ig = document.createElement('button');
+      ig.type = 'button'; ig.textContent = 'Ignorer';
+      ig.onclick = function(){ if (ignorerValeur(r.value)) balayerEditeur(); };
+      act.appendChild(ig);
+    } else {
+      act.textContent = '—';
+    }
+    tr.appendChild(v); tr.appendChild(p); tr.appendChild(k); tr.appendChild(n); tr.appendChild(act);
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb);
+  scanBoxEl.appendChild(table);
+}
+
+function basculerTableau(){
+  var replie = scanBoxEl.className === 'hidden';
+  scanBoxEl.className = replie ? 'scan-box' : 'hidden';
+  scanToggleEl.textContent = replie ? 'Replier le tableau' : 'Déplier le tableau (' + scanRows.length + ')';
+}
+function masquerTableau(){
+  scanWrapEl.className = 'hidden';
+  scanBoxEl.innerHTML = '';
+}
+
+/* ---------- valeurs captées ---------- */
+function afficherCaptees(){
+  learnedBtn.textContent = (learnedListEl.className === 'hidden' ? 'Voir' : 'Masquer') +
+    ' les valeurs captées (' + learned.length + ')';
+  if (learnedListEl.className === 'hidden') return;
+  learnedListEl.innerHTML = '';
+  if (!learned.length){
+    var p = document.createElement('p'); p.className = 'note';
+    p.textContent = 'Rien de capté pour le moment. Activez un motif puis lancez Anonymiser.';
+    learnedListEl.appendChild(p);
+    return;
+  }
+  learned.forEach(function(couple){
+    var ligne = document.createElement('div'); ligne.className = 'learn';
+    var jeton = document.createElement('span'); jeton.className = 'ph'; jeton.textContent = couple[1];
+    var val = document.createElement('span'); val.className = 'val'; val.textContent = couple[0];
+    var ig = document.createElement('button');
+    ig.type = 'button'; ig.textContent = 'Ignorer';
+    ig.onclick = function(){ ignorerValeur(couple[0]); };
+    var del = document.createElement('button');
+    del.type = 'button'; del.className = 'danger'; del.textContent = 'Retirer';
+    del.onclick = function(){
+      if (!confirm('Retirer le couple ' + couple[1] + ' — ' + couple[0] + ' ? Un texte déjà anonymisé avec ' +
+        couple[1] + ' ne pourra plus être inversé, et la valeur sera captée de nouveau avec un autre jeton.')) return;
+      learned = learned.filter(function(x){ return x[1] !== couple[1]; });
+      delete learnedIdx[couple[0]];
+      afficherCaptees(); enregistrerRegles(true);
+    };
+    ligne.appendChild(jeton); ligne.appendChild(val); ligne.appendChild(ig); ligne.appendChild(del);
+    learnedListEl.appendChild(ligne);
+  });
+}
+function basculerCaptees(){
+  learnedListEl.className = learnedListEl.className === 'hidden' ? '' : 'hidden';
+  afficherCaptees();
+}
+function oublierCaptees(){
+  if (!learned.length){ anonDire('Rien de capté pour le moment.', 'warn'); return; }
+  if (!confirm('Oublier ' + learned.length + ' valeur(s) captée(s) ? Un texte déjà anonymisé avec elles ne pourra plus être inversé.')) return;
+  learned = []; learnedIdx = {}; counters = {};
+  afficherCaptees(); enregistrerRegles(true);
+  anonDire('Valeurs captées oubliées. La liste des ignorées n\'a pas bougé.', 'ok');
+}
+
+/* ---------- commandes sed ---------- */
+/* sed travaille en BRE, ligne par ligne : on échappe les métacaractères et le séparateur. */
+function echapperSedMotif(s){
+  return String(s).replace(/[\\.*\[\]^$|]/g, '\\$&');
+}
+function echapperSedRemplacement(s){
+  return String(s).replace(/[\\&|]/g, '\\$&');
+}
+function couplesPourSed(sens){
+  var cfg = preparer(false, Object.assign({}, counters), false);
+  if (!cfg) return null;
+  var couples = cfg.regles.map(function(r){ return { de:r.find, vers:r.repl, fixe:true }; })
+    .concat(learned.map(function(p){ return { de:p[0], vers:p[1], fixe:false }; }));
+  if (sens === 'desanonymiser'){
+    couples = couples.map(function(c){ return { de:c.vers, vers:c.de, fixe:c.fixe, inverse:true }; });
+  }
+  // Les plus longs d'abord : sed applique les expressions dans l'ordre du fichier.
+  couples.sort(function(a, b){ return b.de.length - a.de.length; });
+  return couples;
+}
+function construireSed(sens){
+  var couples = couplesPourSed(sens);
+  if (!couples) return null;
+  var ic = anonCaseEl.checked, me = anonWordEl.checked;
+  var lignes = [], sautees = 0;
+  couples.forEach(function(c){
+    if (/[\r\n]/.test(c.de) || /[\r\n]/.test(c.vers)){ sautees++; return; }  // sed ne franchit pas les sauts de ligne
+    var motif = echapperSedMotif(c.de);
+    var drapeaux = 'g';
+    if (sens === 'anonymiser' && c.fixe){
+      if (me && /^[\w]/.test(c.de) && /[\w]$/.test(c.de)) motif = '\\b' + motif + '\\b';
+      if (ic) drapeaux += 'I';
+    }
+    lignes.push('s|' + motif + '|' + echapperSedRemplacement(c.vers) + '|' + drapeaux);
+  });
+  return { lignes: lignes, sautees: sautees, total: couples.length };
+}
+function afficherSed(sens){
+  sedSens = sens;
+  var res = construireSed(sens);
+  if (!res){ return; }
+  if (!res.lignes.length){
+    sedWrapEl.className = 'hidden';
+    anonDire('Rien à exporter : la table est vide.', 'warn');
+    return;
+  }
+  var nom = sens === 'anonymiser' ? 'anonymiser.sed' : 'desanonymiser.sed';
+  var entete = [
+    '# ' + nom + ' — généré par Tiny Crypto le ' + new Date().toLocaleString('fr-FR'),
+    '# ' + res.lignes.length + ' expression(s), les plus longues en premier.',
+    '# ATTENTION : ce fichier contient les valeurs réelles en clair.',
+    ''
+  ].join('\n');
+  document.getElementById('sedScript').value = entete + res.lignes.join('\n') + '\n';
+
+  var usage = [
+    '# 1. enregistrer le script (bouton Télécharger) puis :',
+    'chmod 600 ' + nom,
+    '',
+    '# 2. sur une chaîne :',
+    'echo "votre texte" | sed -f ' + nom,
+    '',
+    '# 3. sur un fichier, sans l\'écraser :',
+    'sed -f ' + nom + ' rapport.md > rapport.traite.md',
+    '',
+    '# 4. sur une liste de fichiers, en place, avec sauvegarde .bak :',
+    'sed -i.bak -f ' + nom + ' *.md',
+    '',
+    '# 5. sur une arborescence entière :',
+    'grep -rlZ . --include="*.md" . | xargs -0 sed -i -f ' + nom
+  ].join('\n');
+  document.getElementById('sedUsage').value = usage;
+
+  document.getElementById('sedInline').value =
+    'sed ' + res.lignes.map(function(l){ return "-e '" + l.replace(/'/g, "'\\''") + "'"; }).join(' ');
+
+  document.getElementById('sedDanger').textContent =
+    'Ce script contient vos valeurs réelles en clair, dans les deux sens. Rangez-le comme un secret : ' +
+    'chmod 600, hors dépôt Git, supprimé après usage.' +
+    (res.sautees ? ' ' + res.sautees + ' entrée(s) contenant un saut de ligne ont été écartées, sed travaillant ligne par ligne.' : '');
+
+  document.getElementById('sedStatus').textContent = sens === 'anonymiser'
+    ? 'Sens : texte réel → jetons. Seules les valeurs déjà présentes dans la table sont traitées.'
+    : 'Sens : jetons → texte réel. Utile pour relire en local un document anonymisé.';
+  document.getElementById('sedStatus').className = 'status';
+  sedWrapEl.className = '';
+}
+function masquerSed(){ sedWrapEl.className = 'hidden'; }
+function copierSed(id){
+  var el = document.getElementById(id);
+  if (!el.value){ toast('Rien à copier'); return; }
+  copierTexte(el.value); toast('Copié');
+}
+function telechargerSed(){
+  var contenu = document.getElementById('sedScript').value;
+  if (!contenu){ toast('Rien à télécharger'); return; }
+  telecharger(sedSens === 'anonymiser' ? 'anonymiser.sed' : 'desanonymiser.sed', contenu);
+}
+
+/* ---------- enregistrement de la table ---------- */
+function chargeUtile(){
+  var motifs = {};
+  KIND_ORDER.forEach(function(k){ motifs[k] = document.getElementById(DET[k].box).checked; });
+  return {
+    rules: lireRegles().map(function(r){ return { find:r.find, repl:r.repl }; }),
+    ignoreCase: anonCaseEl.checked, wholeWord: anonWordEl.checked,
+    kinds: motifs, learned: learned, counters: counters, excluded: excluded,
+    mode: mode, cle: cleProjet
+  };
+}
+function enregistrerRegles(silencieux){
+  var charge = chargeUtile();
+  var soucis = verifierRegles(charge.rules.filter(function(r){ return r.find.trim() && r.repl.trim(); }));
+  if (soucis.length && !silencieux){ anonDire(soucis[0], 'bad'); return; }
+  if (!pwdEl.value){
+    if (!silencieux) anonDire('Saisissez d\'abord un mot de passe : cette table n\'est jamais stockée autrement que chiffrée.', 'bad');
+    return;
+  }
+  try {
+    var compacte = LZString.compressToBase64(JSON.stringify(charge));
+    Store.set(RKEY, JSON.stringify({ enc: true, data: CryptoJS.AES.encrypt(compacte, pwdEl.value).toString() }));
+    if (!silencieux) anonDire(charge.rules.length + ' règle(s), ' + learned.length + ' valeur(s) captée(s), ' +
+      excluded.length + ' ignorée(s) et la clé de projet enregistrées, chiffrées.', 'ok');
+  } catch(e){ anonDire('Enregistrement impossible : ' + e.message, 'bad'); }
+}
+function appliquerCharge(charge){
+  anonCaseEl.checked = !!charge.ignoreCase;
+  anonWordEl.checked = !!charge.wholeWord;
+  var motifs = charge.kinds || {};
+  KIND_ORDER.forEach(function(k){ document.getElementById(DET[k].box).checked = !!motifs[k]; });
+  learned = charge.learned || [];
+  learnedIdx = {};
+  learned.forEach(function(p){ learnedIdx[p[0]] = p[1]; });
+  counters = charge.counters || {};
+  excluded = charge.excluded || [];
+  reconstruireIndexIgnorees();
+  mode = charge.mode === 'empreinte' ? 'empreinte' : 'compteur';
+  modeEl.value = mode;
+  cleProjet = charge.cle || '';
+  majEtatCle();
+  afficherRegles(charge.rules || []);
+  afficherCaptees(); afficherIgnorees();
+}
+function chargerRegles(){
+  var brut = Store.get(RKEY);
+  if (!brut){ afficherRegles([]); afficherCaptees(); afficherIgnorees(); majEtatCle(); return; }
+  rulesLocked = true;
+  document.getElementById('ruleLock').className = '';
+  document.getElementById('ruleMain').className = 'hidden';
+}
+function deverrouillerRegles(silencieux){
+  if (!rulesLocked) return false;
+  var mdp = pwdEl.value;
+  if (!mdp){ if (!silencieux) alert('Saisissez d\'abord le mot de passe ci-dessus.'); return false; }
+  try {
+    var obj = JSON.parse(Store.get(RKEY));
+    var compacte = CryptoJS.AES.decrypt(obj.data, mdp).toString(CryptoJS.enc.Utf8);
+    if (!compacte) throw new Error('x');
+    appliquerCharge(JSON.parse(LZString.decompressFromBase64(compacte)));
+    rulesLocked = false;
+    document.getElementById('ruleLock').className = 'hidden';
+    document.getElementById('ruleMain').className = '';
+    if (!silencieux) anonDire('Table déverrouillée.', 'ok');
+    return true;
+  } catch(e){
+    if (!silencieux) alert('Ce mot de passe n\'ouvre pas la table enregistrée.');
+    return false;
+  }
+}
+function supprimerRegles(){
+  if (!confirm('Supprimer les règles, toutes les valeurs captées, la liste des ignorées et la clé de projet ? ' +
+    'Un texte anonymisé conservé ailleurs ne pourra plus être inversé.')) return;
+  Store.clear(RKEY);
+  rulesLocked = false;
+  learned = []; learnedIdx = {}; counters = {}; excluded = []; excludedIdx = {}; cleProjet = '';
+  document.getElementById('ruleLock').className = 'hidden';
+  document.getElementById('ruleMain').className = '';
+  afficherRegles([]); afficherCaptees(); afficherIgnorees(); majEtatCle(); masquerTableau(); masquerSed();
+  anonDire('Tout a été supprimé.', 'ok');
+}
+function exporterRegles(){
+  if (rulesLocked){ anonDire('Déverrouillez d\'abord la table.', 'bad'); return; }
+  if (!pwdEl.value){ anonDire('Saisissez un mot de passe : la sauvegarde est toujours chiffrée.', 'bad'); return; }
+  var charge = chargeUtile();
+  if (!charge.rules.length && !learned.length && !excluded.length && !cleProjet){ anonDire('Rien à exporter.', 'warn'); return; }
+  var compacte = LZString.compressToBase64(JSON.stringify(charge));
+  var contenu = JSON.stringify({ kind:'rules', enc:true, data: CryptoJS.AES.encrypt(compacte, pwdEl.value).toString() });
+  telecharger('tiny-crypto-table-' + new Date().toISOString().slice(0,10) + '.json', contenu, 'application/json');
+  anonDire('Sauvegarde téléchargée, chiffrée. Elle contient aussi la clé de projet.', 'ok');
+}
+function importerRegles(champ){
+  var f = champ.files && champ.files[0];
+  if (!f) return;
+  var lecteur = new FileReader();
+  lecteur.onload = function(){
+    try {
+      var obj = JSON.parse(lecteur.result);
+      if (!pwdEl.value) throw new Error('saisissez d\'abord le mot de passe de la sauvegarde');
+      var compacte = CryptoJS.AES.decrypt(obj.data, pwdEl.value).toString(CryptoJS.enc.Utf8);
+      if (!compacte) throw new Error('mot de passe incorrect');
+      var charge = JSON.parse(LZString.decompressFromBase64(compacte));
+      if (!confirm('Remplacer les règles, les valeurs captées, la liste des ignorées et la clé par la sauvegarde (' +
+        (charge.rules || []).length + ' règles, ' + (charge.learned || []).length + ' valeurs, ' +
+        (charge.excluded || []).length + ' ignorées) ?')){ champ.value=''; return; }
+      appliquerCharge(charge);
+      rulesLocked = false;
+      document.getElementById('ruleLock').className = 'hidden';
+      document.getElementById('ruleMain').className = '';
+      masquerTableau(); masquerSed();
+      enregistrerRegles(true);
+      anonDire('Sauvegarde restaurée.', 'ok');
+    } catch(e){ anonDire('Lecture impossible : ' + e.message, 'bad'); }
+    champ.value = '';
+  };
+  lecteur.readAsText(f);
+}
+
+/* ---------- chiffrement ---------- */
+function majLibellesChiffrement(){
+  var enchaine = chainerEl.checked;
+  document.getElementById('btnChiffrer').textContent = enchaine ? 'Anonymiser + chiffrer' : 'Compresser & chiffrer';
+  document.getElementById('btnDechiffrer').textContent = enchaine ? 'Déchiffrer + désanonymiser' : 'Déchiffrer & décompresser';
+}
+function chiffrer(){
+  var mdp = pwdEl.value;
+  if (!mdp){ alert('Saisissez d\'abord un mot de passe.'); return; }
+  if (chainerEl.checked && !anonymiser()) { if (!inputEl.value) return; }
+  var entree = inputEl.value;
+  if (!entree){ alert('Saisissez d\'abord du texte.'); return; }
+  try {
+    var compacte = LZString.compressToBase64(entree);
+    outputEl.value = CryptoJS.AES.encrypt(compacte, mdp).toString();
+    montrerApercu(entree);
+    toast(chainerEl.checked ? 'Anonymisé puis chiffré' : 'Chiffré');
+  } catch(e){ alert('Chiffrement impossible : ' + e.message); outputEl.value = ''; }
+}
+function dechiffrer(){
+  var entree = inputEl.value.trim(), mdp = pwdEl.value;
+  if (!mdp){ alert('Saisissez d\'abord un mot de passe.'); return; }
+  if (!entree){ alert('Collez d\'abord une chaîne chiffrée.'); return; }
+  try {
+    var compacte = CryptoJS.AES.decrypt(entree, mdp).toString(CryptoJS.enc.Utf8);
+    if (!compacte) throw new Error('mot de passe incorrect ou chaîne abîmée');
+    var clair = LZString.decompressFromBase64(compacte);
+    if (clair === null || clair === undefined || clair === '') throw new Error('mot de passe incorrect ou chaîne abîmée');
+
+    var restaurees = 0;
+    if (chainerEl.checked){
+      var cfg = preparer(true, Object.assign({}, counters), false);
+      if (cfg){
+        var compteur = { n:0 };
+        clair = appliquerDesanonymisation(clair, cfg, compteur);
+        restaurees = compteur.n;
+      }
+    }
+    outputEl.value = clair;
+    montrerApercu(clair);
+    toast(chainerEl.checked ? 'Déchiffré, ' + restaurees + ' valeur(s) restaurée(s)' : 'Déchiffré');
+  } catch(e){
+    alert('Déchiffrement impossible : ' + e.message);
+    outputEl.value = ''; lastPlain = ''; previewEl.innerHTML = '';
+  }
+}
+function copierResultat(){
+  if (!outputEl.value){ toast('Rien à copier'); return; }
+  outputEl.select(); outputEl.setSelectionRange(0, 999999);
+  copierTexte(outputEl.value);
+  toast('Copié');
+}
+function toutEffacer(){
+  inputEl.value = ''; outputEl.value = ''; lastPlain = ''; previewEl.innerHTML = '';
+  masquerTableau();
+}
+function basculerApercu(){
+  var w = document.getElementById('previewWrap'), b = document.getElementById('previewBtn');
+  var masquer = w.className !== 'hidden';
+  w.className = masquer ? 'hidden' : '';
+  b.textContent = masquer ? "Afficher l'aperçu" : "Masquer l'aperçu";
+}
+
+/* ---------- traitement de plusieurs fichiers ---------- */
+function fichiersChoisis(){
+  var f = fichiersEl.files;
+  if (!f || !f.length){ fichiersStatusEl.textContent = 'Choisissez d\'abord un ou plusieurs fichiers.'; fichiersStatusEl.className='status bad'; return null; }
+  return f;
+}
+function lireFichiersEnSerie(liste, surChaque, fin){
+  var i = 0;
+  function suivant(){
+    if (i >= liste.length){ fin(); return; }
+    var f = liste[i++];
+    var lecteur = new FileReader();
+    lecteur.onload = function(){ surChaque(f, String(lecteur.result)); suivant(); };
+    lecteur.onerror = function(){ surChaque(f, ''); suivant(); };
+    lecteur.readAsText(f);
+  }
+  suivant();
+}
+function chargerFichiersDansEditeur(){
+  var f = fichiersChoisis(); if (!f) return;
+  var morceaux = [];
+  lireFichiersEnSerie(f, function(fichier, contenu){
+    morceaux.push('===== ' + fichier.name + ' =====\n' + contenu);
+  }, function(){
+    inputEl.value = morceaux.join('\n\n');
+    montrerApercu(inputEl.value);
+    fichiersStatusEl.textContent = morceaux.length + ' fichier(s) chargé(s) dans l\'éditeur.';
+    fichiersStatusEl.className = 'status ok';
+    window.scrollTo(0, 0);
+  });
+}
+function traiterFichiers(){
+  var f = fichiersChoisis(); if (!f) return;
+  var anon = document.getElementById('fAnon').checked;
+  var chif = document.getElementById('fChiffrer').checked;
+  if (!anon && !chif){ fichiersStatusEl.textContent = 'Cochez au moins Anonymiser ou Chiffrer.'; fichiersStatusEl.className='status bad'; return; }
+  if (chif && !pwdEl.value){ fichiersStatusEl.textContent = 'Le chiffrement réclame un mot de passe.'; fichiersStatusEl.className='status bad'; return; }
+  var cfg = null;
+  if (anon){
+    cfg = preparer(false, counters, true);
+    if (!cfg){ fichiersStatusEl.textContent = 'Anonymisation impossible, voyez le message dans la section Anonymisation.'; fichiersStatusEl.className='status bad'; return; }
+  }
+  var bilan = nouveauBilan();
+  fichiersResultats = [];
+  fichiersStatusEl.textContent = 'Traitement en cours…';
+  fichiersStatusEl.className = 'status';
+
+  lireFichiersEnSerie(f, function(fichier, contenu){
+    var sortie = contenu, nom = fichier.name;
+    if (anon){ sortie = appliquerAnonymisation(sortie, cfg, bilan); nom = nom.replace(/(\.[^.]+)?$/, '.anon$1'); }
+    if (chif){
+      sortie = CryptoJS.AES.encrypt(LZString.compressToBase64(sortie), pwdEl.value).toString();
+      nom = nom.replace(/(\.[^.]+)?$/, '.chiffre$1').replace(/\.[^.]+$/, '.txt');
+    }
+    fichiersResultats.push({ nom: nom, contenu: sortie });
+  }, function(){
+    afficherResultatsFichiers();
+    var msg = fichiersResultats.length + ' fichier(s) traité(s).';
+    if (anon) msg += ' ' + bilan.total + ' remplacement(s), ' + bilan.nouveaux + ' nouvelle(s) valeur(s) dans la table.';
+    if (anon && pwdEl.value){ enregistrerRegles(true); afficherCaptees(); }
+    if (anon && !pwdEl.value) msg += ' Attention : sans mot de passe la table n\'est pas enregistrée.';
+    fichiersStatusEl.textContent = msg;
+    fichiersStatusEl.className = 'status ok';
+  });
+}
+function afficherResultatsFichiers(){
+  fichiersListeEl.innerHTML = '';
+  if (!fichiersResultats.length) return;
+  fichiersResultats.forEach(function(r){
+    var ligne = document.createElement('div'); ligne.className = 'learn';
+    var nom = document.createElement('span'); nom.className = 'val'; nom.textContent = r.nom;
+    var dl = document.createElement('button');
+    dl.type = 'button'; dl.textContent = 'Télécharger';
+    dl.onclick = function(){ telecharger(r.nom, r.contenu); };
+    var ouvrir = document.createElement('button');
+    ouvrir.type = 'button'; ouvrir.textContent = 'Éditeur';
+    ouvrir.onclick = function(){ inputEl.value = r.contenu; montrerApercu(r.contenu); window.scrollTo(0,0); toast('Chargé dans l\'éditeur'); };
+    ligne.appendChild(nom); ligne.appendChild(dl); ligne.appendChild(ouvrir);
+    fichiersListeEl.appendChild(ligne);
+  });
+  var tout = document.createElement('div'); tout.className = 'row';
+  var b = document.createElement('button');
+  b.type = 'button'; b.className = 'blue'; b.textContent = 'Télécharger tout en un seul fichier';
+  b.onclick = function(){
+    var groupe = fichiersResultats.map(function(r){ return '===== ' + r.nom + ' =====\n' + r.contenu; }).join('\n\n');
+    telecharger('tiny-crypto-lot-' + new Date().toISOString().slice(0,10) + '.txt', groupe);
+  };
+  tout.appendChild(b);
+  fichiersListeEl.appendChild(tout);
+}
+
+/* ---------- GitHub ---------- */
+function analyserIssue(u){
+  u = (u || '').trim();
+  var m = u.match(/^https?:\/\/([^\/]+)\/([^\/\s]+)\/([^\/\s]+)\/issues\/(\d+)/i);
+  if (m){
+    var hote = m[1].toLowerCase();
+    if (hote === 'api.github.com'){
+      var a = u.match(/repos\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/i);
+      if (a) return { api:'https://api.github.com', owner:a[1], repo:a[2], num:a[3] };
+      return null;
+    }
+    return {
+      api: (hote === 'github.com' || hote === 'www.github.com') ? 'https://api.github.com' : 'https://' + m[1] + '/api/v3',
+      owner: m[2], repo: m[3], num: m[4]
+    };
+  }
+  m = u.match(/^([\w.-]+)\/([\w.-]+)#(\d+)$/);
+  if (m) return { api:'https://api.github.com', owner:m[1], repo:m[2], num:m[3] };
+  return null;
+}
+function basculerJeton(){
+  var cache = ghTokenEl.type === 'password';
+  ghTokenEl.type = cache ? 'text' : 'password';
+  document.getElementById('jetonVoirBtn').textContent = cache ? 'Masquer le jeton' : 'Afficher le jeton';
+  if (cache) ghDire('Jeton affiché en clair. Masquez-le avant de montrer votre écran.', 'warn');
+}
+function copierJeton(){
+  if (!ghTokenEl.value){ ghDire('Aucun jeton à copier.', 'warn'); return; }
+  copierTexte(ghTokenEl.value); toast('Jeton copié');
+}
+function publierSurGithub(){
+  var cible = analyserIssue(ghUrlEl.value);
+  if (!cible){ ghDire('Ce lien d\'issue est illisible. Utilisez https://github.com/proprietaire/depot/issues/12', 'bad'); return; }
+  var jeton = ghTokenEl.value.trim();
+  if (!jeton){ ghDire('Renseignez d\'abord un jeton d\'accès personnel.', 'bad'); return; }
+
+  var source = document.getElementById('postSource').value;
+  var texte = source === 'editor' ? inputEl.value : outputEl.value;
+  if (!texte || !texte.trim()){
+    ghDire(source === 'editor' ? "L'éditeur est vide." : 'La zone Résultat est vide. Chiffrez, déchiffrez, ou choisissez de publier le texte de l\'éditeur.', 'bad');
+    return;
+  }
+
+  var restes = balayerValeurs(semblechiffre(texte) ? lastPlain : texte);
+  if (restes.length){
+    if (!confirm('Ce contenu comporte encore ' + restes.length + ' valeur(s) que vos règles ou vos motifs ' +
+      'remplaceraient, à commencer par « ' + restes[0].value + ' ». Publier quand même ?')){
+      ghDire('Publication annulée. Lancez Balayer seulement pour toutes les voir.', 'warn'); return;
+    }
+  }
+
+  if (ghWrapEl.checked && semblechiffre(texte)){
+    var cloture = '```';
+    texte = cloture + '\n' + texte.trim() + '\n' + cloture;
+  }
+
+  var url = cible.api + '/repos/' + cible.owner + '/' + cible.repo + '/issues/' + cible.num + '/comments';
+  ghDire('Publication vers ' + cible.owner + '/' + cible.repo + ' #' + cible.num + '…');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', url, true);
+  xhr.setRequestHeader('Accept', 'application/vnd.github+json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + jeton);
+  xhr.setRequestHeader('X-GitHub-Api-Version', '2022-11-28');
+  xhr.onload = function(){
+    if (xhr.status === 201){
+      var lien = '';
+      try { lien = JSON.parse(xhr.responseText).html_url || ''; } catch(e){}
+      ghDire('Commentaire publié.', 'ok');
+      if (lien){
+        ghStatusEl.appendChild(document.createTextNode(' '));
+        var a = document.createElement('a');
+        a.href = lien; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = 'Ouvrir';
+        ghStatusEl.appendChild(a);
+      }
+      toast('Publié sur GitHub');
+    } else {
+      var detail = '';
+      try { detail = JSON.parse(xhr.responseText).message || ''; } catch(e){}
+      var msg;
+      if (xhr.status === 401) msg = 'GitHub a refusé le jeton : il est peut-être erroné ou expiré.';
+      else if (xhr.status === 403) msg = 'GitHub refuse : le jeton a besoin de la permission Issues en lecture et écriture sur ce dépôt.';
+      else if (xhr.status === 404) msg = 'Introuvable : soit le lien est faux, soit ce jeton ne voit pas ce dépôt privé.';
+      else if (xhr.status === 410) msg = 'Cette issue est verrouillée, ou le dépôt a désactivé les issues.';
+      else msg = 'GitHub a répondu ' + xhr.status + '.';
+      ghDire(msg + (detail ? ' (' + detail + ')' : ''), 'bad');
+    }
+  };
+  xhr.onerror = function(){
+    ghDire('La requête n\'a pas atteint GitHub. Une page ouverte en fichier local est bloquée : servez-la en https, ou vérifiez la connexion.', 'bad');
+  };
+  try { xhr.send(JSON.stringify({ body: texte })); }
+  catch(e){ ghDire('Envoi impossible : ' + e.message, 'bad'); }
+}
+function enregistrerGithub(silencieux){
+  var data = { url: ghUrlEl.value.trim(), wrap: ghWrapEl.checked };
+  if (ghRememberEl.checked){
+    var jeton = ghTokenEl.value.trim();
+    if (!pwdEl.value){
+      ghRememberEl.checked = false;
+      ghDire('Saisissez un mot de passe ci-dessus avant de conserver le jeton.', 'bad');
+      return;
+    }
+    if (jeton) data.tokenEnc = CryptoJS.AES.encrypt(jeton, pwdEl.value).toString();
+  }
+  try {
+    Store.set(GKEY, JSON.stringify(data));
+    if (!silencieux) ghDire(ghRememberEl.checked ? 'Enregistré. Le jeton est stocké chiffré sur cet appareil.' : 'Enregistré. Le jeton n\'est pas stocké.', 'ok');
+  } catch(e){ ghDire('Enregistrement impossible : ' + e.message, 'bad'); }
+}
+function chargerGithub(){
+  var brut = Store.get(GKEY);
+  if (!brut) return;
+  var d;
+  try { d = JSON.parse(brut); } catch(e){ return; }
+  ghUrlEl.value = d.url || '';
+  if (typeof d.wrap === 'boolean') ghWrapEl.checked = d.wrap;
+  if (d.tokenEnc){
+    tokenLocked = true;
+    ghRememberEl.checked = true;
+    ghUnlockBtn.className = '';
+    ghDire('Un jeton est enregistré, verrouillé. Saisissez le mot de passe ci-dessus puis déverrouillez-le.');
+  }
+}
+function deverrouillerJeton(silencieux){
+  if (!tokenLocked) return false;
+  var mdp = pwdEl.value;
+  if (!mdp){ if (!silencieux) ghDire('Saisissez d\'abord le mot de passe ci-dessus.', 'bad'); return false; }
+  try {
+    var d = JSON.parse(Store.get(GKEY));
+    var jeton = CryptoJS.AES.decrypt(d.tokenEnc, mdp).toString(CryptoJS.enc.Utf8);
+    if (!jeton) throw new Error('x');
+    ghTokenEl.value = jeton;
+    tokenLocked = false;
+    ghUnlockBtn.className = 'hidden';
+    ghDire('Jeton déverrouillé. Utilisez Afficher le jeton pour le lire ou Copier le jeton pour le récupérer.', 'ok');
+    return true;
+  } catch(e){
+    if (!silencieux) ghDire('Ce mot de passe n\'ouvre pas le jeton enregistré.', 'bad');
+    return false;
+  }
+}
+function oublierJeton(){
+  if (!confirm('Retirer le jeton enregistré de cet appareil ?')) return;
+  var d = {};
+  try { d = JSON.parse(Store.get(GKEY)) || {}; } catch(e){}
+  Store.set(GKEY, JSON.stringify({ url: d.url || ghUrlEl.value.trim(), wrap: ghWrapEl.checked }));
+  ghTokenEl.value = '';
+  tokenLocked = false;
+  ghRememberEl.checked = false;
+  ghUnlockBtn.className = 'hidden';
+  ghDire('Jeton retiré de cet appareil.', 'ok');
+}
+
+/* ---------- historique ---------- */
+function chargerHistorique(){
+  var brut = Store.get(HKEY);
+  if (!brut){ notes = []; afficherListe(); return; }
+  var obj;
+  try { obj = JSON.parse(brut); } catch(e){ notes = []; afficherListe(); return; }
+  if (obj && obj.enc){
+    locked = true; lockChk.checked = true;
+    document.getElementById('lockPanel').className = '';
+    document.getElementById('histMain').className = 'hidden';
+  } else {
+    notes = (obj && obj.items) || []; lockChk.checked = false;
+    afficherListe();
+  }
+}
+function deverrouillerHistorique(){
+  var mdp = pwdEl.value;
+  if (!mdp){ alert('Saisissez d\'abord le mot de passe ci-dessus.'); return; }
+  try {
+    var obj = JSON.parse(Store.get(HKEY));
+    var compacte = CryptoJS.AES.decrypt(obj.data, mdp).toString(CryptoJS.enc.Utf8);
+    if (!compacte) throw new Error('x');
+    notes = JSON.parse(LZString.decompressFromBase64(compacte));
+    locked = false;
+    document.getElementById('lockPanel').className = 'hidden';
+    document.getElementById('histMain').className = '';
+    afficherListe();
+    toast('Historique déverrouillé');
+  } catch(e){ alert('Ce mot de passe n\'ouvre pas l\'historique enregistré.'); }
+}
+function persister(){
+  try {
+    if (lockChk.checked){
+      var mdp = pwdEl.value;
+      if (!mdp){ alert('L\'historique est verrouillé : un mot de passe est nécessaire pour enregistrer.'); return false; }
+      var compacte = LZString.compressToBase64(JSON.stringify(notes));
+      Store.set(HKEY, JSON.stringify({ enc:true, data: CryptoJS.AES.encrypt(compacte, mdp).toString() }));
+    } else {
+      Store.set(HKEY, JSON.stringify({ enc:false, items: notes }));
+    }
+    return true;
+  } catch(e){ alert('Enregistrement impossible : ' + e.message); return false; }
+}
+function enregistrerCourant(){
+  var texte = outputEl.value || lastPlain || inputEl.value;
+  if (!texte || !texte.trim()){ toast('Rien à enregistrer'); return; }
+  if (semblechiffre(texte) && lastPlain && !semblechiffre(lastPlain)) texte = lastPlain;
+  if (locked){ alert('Déverrouillez d\'abord l\'historique.'); return; }
+  var maintenant = Date.now();
+  notes.unshift({ id:nouvelId(), title:titreDe(texte), body:texte, created:maintenant, updated:maintenant });
+  if (persister()){ afficherListe(); toast('Enregistré'); }
+}
+function basculerVerrouHistorique(){
+  if (lockChk.checked && !pwdEl.value){
+    lockChk.checked = false;
+    alert('Saisissez un mot de passe ci-dessus avant de verrouiller l\'historique.');
+    return;
+  }
+  if (persister()) toast(lockChk.checked ? 'Historique verrouillé' : 'Historique déverrouillé');
+}
+function viderHistorique(){
+  if (!confirm('Supprimer tous les messages enregistrés ? C\'est définitif.')) return;
+  notes = []; Store.clear(HKEY); locked = false; lockChk.checked = false;
+  document.getElementById('lockPanel').className = 'hidden';
+  document.getElementById('histMain').className = '';
+  afficherListe(); toast('Historique supprimé');
+}
+function exporterHistorique(){
+  if (locked){ alert('Déverrouillez d\'abord l\'historique.'); return; }
+  if (!notes.length){ toast('Rien à exporter'); return; }
+  var contenu;
+  if (lockChk.checked){
+    if (!pwdEl.value){ alert('Saisissez le mot de passe pour exporter l\'historique verrouillé.'); return; }
+    var compacte = LZString.compressToBase64(JSON.stringify(notes));
+    contenu = JSON.stringify({ enc:true, data: CryptoJS.AES.encrypt(compacte, pwdEl.value).toString() });
+  } else {
+    contenu = JSON.stringify({ enc:false, items: notes }, null, 2);
+  }
+  telecharger('tiny-crypto-historique-' + new Date().toISOString().slice(0,10) + '.json', contenu, 'application/json');
+}
+function importerHistorique(champ){
+  var f = champ.files && champ.files[0];
+  if (!f) return;
+  var lecteur = new FileReader();
+  lecteur.onload = function(){
+    try {
+      var obj = JSON.parse(lecteur.result), entrants;
+      if (obj.enc){
+        if (!pwdEl.value){ alert('Cette sauvegarde est chiffrée. Saisissez son mot de passe ci-dessus puis recommencez.'); champ.value=''; return; }
+        var compacte = CryptoJS.AES.decrypt(obj.data, pwdEl.value).toString(CryptoJS.enc.Utf8);
+        if (!compacte) throw new Error('mot de passe incorrect');
+        entrants = JSON.parse(LZString.decompressFromBase64(compacte));
+      } else { entrants = obj.items || []; }
+      var connus = {};
+      notes.forEach(function(n){ connus[n.id] = true; });
+      var ajoutes = 0;
+      entrants.forEach(function(n){
+        if (!n || !n.body || connus[n.id]) return;
+        notes.push({ id:n.id || nouvelId(), title:n.title || titreDe(n.body), body:n.body,
+                     created:n.created || Date.now(), updated:n.updated || n.created || Date.now() });
+        ajoutes++;
+      });
+      notes.sort(function(a,b){ return (b.updated||0) - (a.updated||0); });
+      if (persister()){ afficherListe(); toast(ajoutes + ' message(s) importé(s)'); }
+    } catch(e){ alert('Lecture impossible : ' + e.message); }
+    champ.value = '';
+  };
+  lecteur.readAsText(f);
+}
+function bouton(libelle, classe, action){
+  var b = document.createElement('button');
+  b.type = 'button'; b.textContent = libelle; if (classe) b.className = classe;
+  b.onclick = action; return b;
+}
+function afficherListe(){
+  listEl.innerHTML = '';
+  var q = searchEl.value.trim().toLowerCase();
+  var elements = notes.filter(function(n){
+    return !q || (n.title + '\n' + n.body).toLowerCase().indexOf(q) > -1;
+  });
+  countEl.textContent = !notes.length
+    ? 'Aucun message enregistré. Écrivez ou déchiffrez quelque chose, puis Ajouter à l\'historique.'
+    : (q ? elements.length + ' sur ' + notes.length + ' enregistrés' : notes.length + ' enregistré(s)');
+
+  elements.forEach(function(n){
+    var carte = document.createElement('div'); carte.className = 'card';
+
+    var tete = document.createElement('div'); tete.className = 'card-head';
+    var t = document.createElement('div'); t.className = 'card-title'; t.textContent = n.title || 'Sans titre';
+    var d = document.createElement('div'); d.className = 'card-date'; d.textContent = dateFr(n.updated || n.created);
+    tete.appendChild(t); tete.appendChild(d); carte.appendChild(tete);
+
+    var barre = document.createElement('div'); barre.className = 'card-actions';
+
+    if (editingId === n.id){
+      var zone = document.createElement('div'); zone.className = 'edit-wrap';
+      var ta = document.createElement('textarea');
+      ta.className = 'mono'; ta.rows = 12; ta.spellcheck = false; ta.value = n.body;
+      zone.appendChild(ta); carte.appendChild(zone);
+      barre.appendChild(bouton('Enregistrer', 'primary', function(){
+        n.body = ta.value; n.title = titreDe(ta.value); n.updated = Date.now();
+        editingId = null;
+        if (persister()){ afficherListe(); toast('Enregistré'); }
+      }));
+      barre.appendChild(bouton('Annuler', '', function(){ editingId = null; afficherListe(); }));
+      carte.appendChild(barre);
+    } else {
+      var corps = document.createElement('div'); corps.className = 'md';
+      rendreMarkdown(n.body, corps); carte.appendChild(corps);
+
+      barre.appendChild(bouton('Modifier', '', function(){ editingId = n.id; afficherListe(); }));
+      barre.appendChild(bouton('Copier', '', function(){ copierTexte(n.body); toast('Copié'); }));
+      barre.appendChild(bouton('Vers l\'éditeur', '', function(){
+        inputEl.value = n.body; montrerApercu(n.body); masquerTableau();
+        window.scrollTo(0, 0); toast('Chargé dans l\'éditeur');
+      }));
+      barre.appendChild(bouton('Publier', '', function(){
+        inputEl.value = n.body; montrerApercu(n.body);
+        document.getElementById('postSource').value = 'editor';
+        publierSurGithub();
+      }));
+      barre.appendChild(bouton('Supprimer', 'danger', function(){
+        if (!confirm('Supprimer ce message ?')) return;
+        notes = notes.filter(function(x){ return x.id !== n.id; });
+        if (persister()){ afficherListe(); toast('Supprimé'); }
+      }));
+      carte.appendChild(barre);
+
+      if (corps.scrollHeight > 320){
+        corps.className = 'md clamp';
+        var plus = document.createElement('div'); plus.className = 'more';
+        var bp = bouton('Voir plus', 'link', function(){
+          var replie = corps.className.indexOf('clamp') > -1;
+          corps.className = replie ? 'md' : 'md clamp';
+          bp.textContent = replie ? 'Voir moins' : 'Voir plus';
+        });
+        plus.appendChild(bp);
+        carte.insertBefore(plus, barre);
+      }
+    }
+    listEl.appendChild(carte);
+  });
+}
+
+/* ---------- démarrage ---------- */
+if (!Store.ok) document.getElementById('storeWarn').className = 'banner';
+ghUrlEl.addEventListener('change', function(){ enregistrerGithub(true); });
+ghWrapEl.addEventListener('change', function(){ enregistrerGithub(true); });
+pwdEl.addEventListener('change', function(){
+  if (tokenLocked) deverrouillerJeton(true);
+  if (rulesLocked) deverrouillerRegles(true);
+});
+majLibellesChiffrement();
+chargerGithub();
+chargerRegles();
+chargerHistorique();
+</script>
+</body>
+</html>
